@@ -1,0 +1,101 @@
+/* src/index.css */
+
+/* Inject Tailwind's base styles (like CSS resets) */
+@tailwind base;
+
+/* Inject Tailwind's component classes (pre-built styles) */
+@tailwind components;
+
+/* Inject Tailwind's utility classes (like text-blue-500, p-4, flex, etc.) */
+@tailwind utilities;
+
+/* Add custom animations and utilities */
+@layer utilities {
+  /* --- Landing Page Animations --- */
+  @keyframes fadeInDown {
+    0% {
+      opacity: 0;
+      transform: translateY(-20px); /* Start above */
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0); /* End at position */
+    }
+  }
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px); /* Start below */
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0); /* End at position */
+    }
+  }
+  /* Utility class to apply the fadeInDown animation */
+  .animate-fade-in-down {
+    animation: fadeInDown 0.8s ease-out forwards;
+  }
+  /* Utility class to apply the fadeInUp animation */
+  .animate-fade-in-up {
+    opacity: 0; /* Start hidden */
+    animation: fadeInUp 0.8s ease-out forwards;
+    animation-delay: 0.2s; /* Delay slightly */
+  }
+
+  /* --- Animated Gradient Background --- */
+  @keyframes gradient-xy {
+      0%, 100% {
+          background-position: 0% 50%; /* Gradient start/end position */
+      }
+      50% {
+          background-position: 100% 50%; /* Gradient midpoint position */
+      }
+  }
+  /* Utility class to apply the gradient animation */
+  .animate-gradient-xy {
+      /* The actual gradient colors and background size */
+      /* are applied via Tailwind classes in AppDashboard */
+      /* e.g., bg-gradient-to-br from-purple-50 ... bg-[length:400%_400%] */
+      animation: gradient-xy 15s ease infinite; /* Animation details */
+  }
+
+  /* --- Subtle Pulse for Save Indicator --- */
+  @keyframes pulse-subtle {
+      0%, 100% {
+          transform: scale(1); /* Normal size */
+          opacity: 0.75; /* Base opacity when visible */
+      }
+      50% {
+          transform: scale(1.1); /* Slightly larger */
+          opacity: 1; /* Slightly brighter/more opaque */
+      }
+  }
+  /* Utility class to apply the pulse animation */
+  .animate-pulse-subtle {
+      animation: pulse-subtle 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+
+  /* --- Define Inter font family utility --- */
+  /* This allows applying the font via className="font-inter" if needed elsewhere */
+  .font-inter {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  }
+}
+
+/* Apply Inter font globally to the body for consistency */
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased; /* Smoother fonts on WebKit browsers */
+  -moz-osx-font-smoothing: grayscale; /* Smoother fonts on Firefox */
+  /* Prevent background color flicker on some browsers */
+  background-color: #f9fafb; /* Or match one of the gradient start colors */
+}
+
+/* Optional: Improve textarea default appearance slightly */
+textarea::placeholder {
+    /* Tailwind placeholder: classes handle this */
+}
+
+/* Tailwind handles the basic spinner animation via animate-spin */
