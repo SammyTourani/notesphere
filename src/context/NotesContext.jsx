@@ -1,290 +1,373 @@
-import React, { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import NotesService from '../services/NotesService';
 
-// Create the context
+// Create the NotesContext
 const NotesContext = createContext();
 
-// Custom hook for using the notes context
-export function useNotes() {
-  return useContext(NotesContext);
-}
+// Use a custom hook to access the context
+export const useNotes = () => useContext(NotesContext);
 
-export function NotesProvider({ children }) {
-  const { currentUser } = useAuth();
+// Provider component
+export const NotesProvider = ({ children }) => {
   const [notes, setNotes] = useState([]);
+  const [trashedNotes, setTrashedNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-  const [lastSynced, setLastSynced] = useState(null);
-  const [syncStatus, setSyncStatus] = useState(null);
-  
-  // Track if we've completed initial load
-  const initialLoadComplete = useRef(false);
-  
-  // Load notes when user changes
+  const { currentUser } = useAuth();
+
+  // Helper function to convert Firestore timestamps
+  const convertTimestamps = (data) => {
+    const result = { ...data };
+    
+    // Convert Firestore timestamps to ISO strings
+    if (result.created && typeof result.created.toDate === 'function') {
+      result.created = result.created.toDate().toISOString();
+    }
+    
+    if (result.lastUpdated && typeof result.lastUpdated.toDate === 'function') {
+      result.lastUpdated = result.lastUpdated.toDate().toISOString();
+    }
+    
+    if (result.deletedAt && typeof result.deletedAt.toDate === 'function') {
+      result.deletedAt = result.deletedAt.toDate().toISOString();
+    }
+    
+    return result;
+  };
+
+  // Listen for online/offline events
   useEffect(() => {
-    if (!currentUser) {
-      setNotes([]);
-      setLoading(false);
-      initialLoadComplete.current = false;
-      return;
-    }
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
 
-    async function loadNotes() {
-      setLoading(true);
-      setError(null);
-      
-      try {
-        const result = await NotesService.getAllNotes(currentUser.uid);
-        
-        if (result.success) {
-          setNotes(result.data || []);
-          setLastSynced(new Date());
-          
-          // Update offline status based on source
-          setIsOffline(['offline-only', 'offline-fallback'].includes(result.source));
-          initialLoadComplete.current = true;
-        } else {
-          console.error('Error loading notes:', result.error);
-          setError('Failed to load notes');
-          setIsOffline(true);
-        }
-      } catch (err) {
-        console.error('Error in notes context:', err);
-        setError('An unexpected error occurred');
-        setIsOffline(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadNotes();
-  }, [currentUser]);
-
-  // Handle network status changes
-  useEffect(() => {
-    function handleOnline() {
-      console.log('Network connection restored');
-      syncNotes(); // Try to sync notes when connection restored
-    }
-    
-    function handleOffline() {
-      console.log('Network connection lost');
-      setIsOffline(true);
-    }
-    
-    // Set initial offline state
-    setIsOffline(!navigator.onLine);
-    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
 
-  // Sync notes with Firestore
-  const syncNotes = useCallback(async () => {
-    if (!currentUser) return { success: false };
-    if (!navigator.onLine) return { success: false, error: 'No internet connection' };
-    
-    try {
-      setSyncStatus('syncing');
-      
-      const result = await NotesService.syncAllOfflineNotes(currentUser.uid);
-      
-      if (result.success) {
-        setSyncStatus('success');
-        setLastSynced(new Date());
-        
-        // Refresh notes after sync
-        await refreshNotes();
-        
-        // If online and sync was successful, update offline status
-        setIsOffline(false);
-      } else {
-        setSyncStatus('failed');
-      }
-      
-      // Reset sync status after a delay
-      setTimeout(() => {
-        setSyncStatus(null);
-      }, 3000);
-      
-      return result;
-    } catch (err) {
-      console.error('Error syncing notes:', err);
-      setSyncStatus('failed');
-      
-      setTimeout(() => {
-        setSyncStatus(null);
-      }, 3000);
-      
-      return { success: false, error: err.message };
-    }
-  }, [currentUser]);
-
-  // Refresh notes list
+  // Load notes from Firestore
   const refreshNotes = useCallback(async () => {
-    if (!currentUser) return { success: false };
-    
-    try {
-      const result = await NotesService.getAllNotes(currentUser.uid);
-      
-      if (result.success) {
-        setNotes(result.data || []);
-        setLastSynced(new Date());
-        
-        // Update offline status based on result
-        if (result.source === 'merged' || result.source === 'cloud') {
-          setIsOffline(false);
-        }
-      }
-      
-      return result;
-    } catch (err) {
-      console.error('Error refreshing notes:', err);
-      return { success: false, error: err.message };
+    if (!currentUser) {
+      setNotes([]);
+      setTrashedNotes([]);
+      setLoading(false);
+      return { success: false, error: 'User not authenticated' };
     }
-  }, [currentUser]);
 
-  // IMPROVED: Delete a note with immediate UI update
-  const deleteNote = useCallback(async (noteId) => {
-    if (!currentUser) return { success: false, error: 'Not authenticated' };
-    
     try {
-      // CRITICAL: Immediately update local state for responsiveness
-      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+      setLoading(true);
+      setError(null);
+
+      // Get regular notes
+      const q = query(
+        collection(db, 'notes'),
+        where('userId', '==', currentUser.uid),
+        where('deleted', '==', false),
+        orderBy('lastUpdated', 'desc')
+      );
+
+      const querySnapshot = await getDocs(q);
+      const fetchedNotes = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...convertTimestamps(data)
+        };
+      });
       
-      // Perform the actual deletion
-      const result = await NotesService.deleteNote(currentUser.uid, noteId);
+      setNotes(fetchedNotes);
+
+      // Get trashed notes
+      const trashQuery = query(
+        collection(db, 'notes'),
+        where('userId', '==', currentUser.uid),
+        where('deleted', '==', true),
+        orderBy('lastUpdated', 'desc')
+      );
+
+      const trashQuerySnapshot = await getDocs(trashQuery);
+      const fetchedTrashedNotes = trashQuerySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...convertTimestamps(data)
+        };
+      });
       
-      // If deletion failed in the backend, revert UI update
-      if (!result.success) {
-        console.error('Error deleting note:', result.error);
-        
-        // Revert optimistic update by refreshing
-        await refreshNotes();
-        return result;
-      }
-      
+      setTrashedNotes(fetchedTrashedNotes);
+
       return { success: true };
     } catch (err) {
-      console.error('Error deleting note:', err);
-      
-      // Revert optimistic update on error
-      await refreshNotes();
+      console.error('Error fetching notes:', err);
+      setError('Failed to load notes. Please try again.');
       return { success: false, error: err.message };
-    }
-  }, [currentUser, refreshNotes]);
-
-  // IMPROVED: Create note with immediate UI update
-  const createNote = useCallback(async (noteData) => {
-    if (!currentUser) return { success: false, error: 'Not authenticated' };
-    
-    try {
-      // Create the note in the service
-      const result = await NotesService.createNote(currentUser.uid, noteData);
-      
-      if (result.success) {
-        // CRITICAL: Immediately update local state with the new note
-        const newNote = {
-          id: result.id,
-          ...noteData,
-          lastUpdated: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          source: result.isOfflineOnly ? 'offline' : 'cloud'
-        };
-        
-        setNotes(prevNotes => [...prevNotes, newNote]);
-      }
-      
-      return result;
-    } catch (err) {
-      console.error('Error creating note:', err);
-      return { success: false, error: err.message };
+    } finally {
+      setLoading(false);
     }
   }, [currentUser]);
 
-  // IMPROVED: Update note with immediate UI update
-  const updateNote = useCallback(async (noteId, noteData) => {
-    if (!currentUser) return { success: false, error: 'Not authenticated' };
-    
-    try {
-      // CRITICAL: Immediately update local state
-      setNotes(prevNotes => prevNotes.map(note => 
-        note.id === noteId 
-          ? { 
-              ...note, 
-              ...noteData, 
-              lastUpdated: new Date().toISOString() 
-            } 
-          : note
-      ));
-      
-      // Perform the actual update
-      const result = await NotesService.updateNote(currentUser.uid, noteId, noteData);
-      
-      // If update failed in the backend, revert UI update
-      if (!result.success) {
-        console.error('Error updating note:', result.error);
-        
-        // Revert optimistic update by refreshing
-        await refreshNotes();
-      }
-      
-      return result;
-    } catch (err) {
-      console.error('Error updating note:', err);
-      
-      // Revert optimistic update on error
-      await refreshNotes();
-      return { success: false, error: err.message };
-    }
-  }, [currentUser, refreshNotes]);
+  // Load notes on startup and when user changes
+  useEffect(() => {
+    refreshNotes();
+  }, [refreshNotes]);
 
-  // Get a single note, with local cache check first
-  const getNote = useCallback(async (noteId) => {
-    if (!currentUser || !noteId) return { success: false, error: 'Invalid parameters' };
-    
+  // Get a specific note by ID
+  const getNote = async (noteId) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
     try {
-      // First check if we have this note in local state already
-      const cachedNote = notes.find(n => n.id === noteId);
-      
-      if (cachedNote) {
+      const noteRef = doc(db, 'notes', noteId);
+      const noteSnapshot = await getDoc(noteRef);
+
+      if (noteSnapshot.exists()) {
+        const noteData = noteSnapshot.data();
+        
+        // Check if this note belongs to the current user
+        if (noteData.userId !== currentUser.uid) {
+          return { success: false, error: 'Note not found' };
+        }
+        
         return { 
           success: true, 
-          data: cachedNote,
-          source: 'cache'
+          data: { 
+            id: noteSnapshot.id, 
+            ...convertTimestamps(noteData) 
+          }
         };
+      } else {
+        return { success: false, error: 'Note not found' };
       }
-      
-      // If not in local state, query the service
-      return await NotesService.getNote(currentUser.uid, noteId);
     } catch (err) {
       console.error('Error getting note:', err);
       return { success: false, error: err.message };
     }
-  }, [currentUser, notes]);
+  };
 
-  // The value to be provided by context
+  // Create a new note
+  const createNote = async (noteData) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const newNote = {
+        title: noteData.title || '',
+        content: noteData.content || '',
+        userId: currentUser.uid,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      };
+
+      const docRef = await addDoc(collection(db, 'notes'), newNote);
+      
+      // Add new note to local state
+      const noteWithId = {
+        id: docRef.id,
+        ...newNote,
+        created: new Date().toISOString(), // Use client timestamp for immediate display
+        lastUpdated: new Date().toISOString()
+      };
+      
+      setNotes(prevNotes => [noteWithId, ...prevNotes]);
+      
+      return { success: true, id: docRef.id };
+    } catch (err) {
+      console.error('Error creating note:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Update an existing note
+  const updateNote = async (noteId, noteData) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      
+      const updates = {
+        title: noteData.title,
+        content: noteData.content,
+        lastUpdated: serverTimestamp()
+      };
+      
+      await updateDoc(noteRef, updates);
+      
+      // Update local state
+      setNotes(prevNotes => 
+        prevNotes.map(note => 
+          note.id === noteId 
+            ? { 
+                ...note, 
+                ...updates, 
+                lastUpdated: new Date().toISOString() // Use client timestamp for immediate display
+              } 
+            : note
+        )
+      );
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error updating note:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Move note to trash (soft delete)
+  const moveToTrash = async (noteId) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      
+      // Mark as deleted instead of actually deleting
+      await updateDoc(noteRef, {
+        deleted: true,
+        deletedAt: serverTimestamp()
+      });
+      
+      // Get the note being deleted
+      const noteToMove = notes.find(note => note.id === noteId);
+      
+      // Update local states
+      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+      
+      if (noteToMove) {
+        const trashedNote = {
+          ...noteToMove,
+          deleted: true,
+          deletedAt: new Date().toISOString()
+        };
+        setTrashedNotes(prevTrashed => [trashedNote, ...prevTrashed]);
+      }
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error moving note to trash:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Restore note from trash
+  const restoreFromTrash = async (noteId) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      
+      // Mark as not deleted
+      await updateDoc(noteRef, {
+        deleted: false,
+        deletedAt: null,
+        lastUpdated: serverTimestamp()
+      });
+      
+      // Get the note being restored
+      const noteToRestore = trashedNotes.find(note => note.id === noteId);
+      
+      // Update local states
+      setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+      
+      if (noteToRestore) {
+        const restoredNote = {
+          ...noteToRestore,
+          deleted: false,
+          deletedAt: null,
+          lastUpdated: new Date().toISOString()
+        };
+        setNotes(prevNotes => [restoredNote, ...prevNotes]);
+      }
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error restoring note from trash:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Permanently delete a note
+  const permanentlyDeleteNote = async (noteId) => {
+    if (!currentUser) {
+      return { success: false, error: 'User not authenticated' };
+    }
+
+    try {
+      const noteRef = doc(db, 'notes', noteId);
+      
+      // Permanently delete the document
+      await deleteDoc(noteRef);
+      
+      // Update local state
+      setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error permanently deleting note:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Empty the entire trash
+  const emptyTrash = async () => {
+    if (!currentUser || trashedNotes.length === 0) {
+      return { success: trashedNotes.length === 0, error: !currentUser ? 'User not authenticated' : null };
+    }
+
+    try {
+      // Delete all trashed notes
+      const deletePromises = trashedNotes.map(note => 
+        deleteDoc(doc(db, 'notes', note.id))
+      );
+      
+      await Promise.all(deletePromises);
+      
+      // Clear local trash state
+      setTrashedNotes([]);
+      
+      return { success: true };
+    } catch (err) {
+      console.error('Error emptying trash:', err);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Legacy delete note function - now forwards to moveToTrash
+  const deleteNote = async (noteId) => {
+    return moveToTrash(noteId);
+  };
+
+  // The value that will be supplied to consuming components
   const value = {
     notes,
+    trashedNotes,
     loading,
     error,
     isOffline,
-    lastSynced,
-    syncStatus,
-    initialLoadComplete: initialLoadComplete.current,
-    refreshNotes,
-    syncNotes,
-    deleteNote,
+    getNote,
     createNote,
     updateNote,
-    getNote
+    deleteNote, // Legacy function keeps API compatibility
+    moveToTrash,
+    restoreFromTrash,
+    permanentlyDeleteNote,
+    emptyTrash,
+    refreshNotes,
   };
 
   return (
@@ -292,4 +375,6 @@ export function NotesProvider({ children }) {
       {children}
     </NotesContext.Provider>
   );
-}
+};
+
+export default NotesContext;

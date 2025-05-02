@@ -1,19 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotes } from '../context/NotesContext';
 import { useAuth } from '../context/AuthContext';
+import { motion } from 'framer-motion';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 function NotesList() {
-  const { notes, loading, error, isOffline, deleteNote, refreshNotes, initialLoadComplete } = useNotes();
+  const { notes, loading, error, isOffline, moveToTrash, refreshNotes } = useNotes();
   const { currentUser } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [filteredNotes, setFilteredNotes] = useState([]);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState(null);
   const navigate = useNavigate();
+
+  // Load data on mount
+  useEffect(() => {
+    console.log("Notes from context:", notes);
+    refreshNotes();
+  }, [refreshNotes]);
 
   // Filter notes when search text or notes change
   useEffect(() => {
-    if (!notes) {
+    console.log("Filtering notes:", notes);
+    
+    if (!notes || notes.length === 0) {
       setFilteredNotes([]);
       return;
     }
@@ -26,6 +38,7 @@ function NotesList() {
         return dateB - dateA;
       });
       
+      console.log("Sorted notes:", sortedNotes);
       setFilteredNotes(sortedNotes);
       return;
     }
@@ -43,12 +56,8 @@ function NotesList() {
     setFilteredNotes(filtered);
   }, [notes, searchText]);
   
-  // Refresh notes on mount and periodically
+  // Set up periodic refresh
   useEffect(() => {
-    // Initial refresh
-    refreshNotes();
-    
-    // Set up periodic refresh in background (every 30 seconds)
     const refreshInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         refreshNotes().catch(err => console.error('Background refresh error:', err));
@@ -83,32 +92,87 @@ function NotesList() {
     }
   };
   
-  // Handle note deletion with immediate UI update
-  const handleDeleteNote = useCallback(async (e, noteId) => {
+  // Open delete confirmation modal
+  const openDeleteModal = (e, note) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setNoteToDelete(note);
+    setDeleteModalOpen(true);
+  };
+  
+  // Handle confirmed deletion
+  const handleConfirmDelete = async () => {
+    if (!noteToDelete) return;
+    
+    setDeletingId(noteToDelete.id);
+    setDeleteModalOpen(false);
+    
+    try {
+      await moveToTrash(noteToDelete.id);
+    } catch (err) {
+      console.error('Error deleting note:', err);
+    } finally {
+      setDeletingId(null);
+      setNoteToDelete(null);
+    }
+  };
+  
+  // Handle note download as DOCX
+  const handleDownloadNote = (e, note) => {
     e.preventDefault();
     e.stopPropagation();
     
-    if (window.confirm('Are you sure you want to delete this note?')) {
-      setDeletingId(noteId);
-      
-      try {
-        await deleteNote(noteId);
-        // UI is automatically updated by the context
-      } catch (err) {
-        console.error('Error deleting note:', err);
-      } finally {
-        setDeletingId(null);
-      }
-    }
-  }, [deleteNote]);
+    // Create a simple DOCX-like format with HTML
+    const htmlContent = `
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; }
+            h1 { color: #333; }
+            .content { line-height: 1.6; }
+            .footer { margin-top: 40px; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <h1>${note.title || 'Untitled Note'}</h1>
+          <div class="content">${note.content.replace(/\n/g, '<br>')}</div>
+          <div class="footer">
+            Created with NoteSphere<br>
+            ${new Date().toLocaleString()}
+          </div>
+        </body>
+      </html>
+    `;
+    
+    // Create a Blob and download link
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-word' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${note.title || 'Untitled Note'}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 0);
+  };
   
-  // Handle creating a new note
+  // Animated navigation to create a new note
   const handleCreateNote = () => {
     navigate('/notes/new');
   };
+
+  // Animated navigation to view a note
+  const handleNoteClick = (e, noteId) => {
+    e.preventDefault();
+    navigate(`/notes/${noteId}`);
+  };
   
   // Get note excerpt for preview
-  const getExcerpt = (content, maxLength = 120) => {
+  const getExcerpt = (content, maxLength = 100) => {
     if (!content) return '';
     if (content.length <= maxLength) return content;
     
@@ -118,10 +182,11 @@ function NotesList() {
   
   // Force manual refresh
   const handleManualRefresh = () => {
+    console.log("Manual refresh triggered");
     refreshNotes();
   };
   
-  if (loading && !initialLoadComplete) {
+  if (loading && filteredNotes.length === 0) {
     return (
       <div className="pt-16 h-screen flex justify-center items-start">
         <div className="mt-12">
@@ -134,7 +199,7 @@ function NotesList() {
   
   return (
     <div className="pt-16 min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         {/* Header with status info */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
           <div className="flex items-center mb-4 sm:mb-0">
@@ -144,8 +209,10 @@ function NotesList() {
                 Offline
               </span>
             )}
-            {/* Manual refresh button */}
-            <button
+            {/* Manual refresh button with enhanced spin animation */}
+            <motion.button
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
               onClick={handleManualRefresh} 
               className="ml-3 p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
               title="Refresh notes"
@@ -153,7 +220,7 @@ function NotesList() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
               </svg>
-            </button>
+            </motion.button>
           </div>
           
           <div className="w-full sm:w-64">
@@ -205,53 +272,256 @@ function NotesList() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          // Grid layout for more square-like cards
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {filteredNotes.map(note => (
-              <Link
+              <motion.div
                 key={note.id}
-                to={`/notes/${note.id}`}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ 
+                  y: -5,
+                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+                }}
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden flex flex-col aspect-[3/4] max-h-[300px]"
               >
-                <div className="p-4 flex-grow">
-                  <div className="flex justify-between items-start mb-2">
-                    <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate">
-                      {note.title || 'Untitled Note'}
-                    </h2>
-                    <button
-                      onClick={(e) => handleDeleteNote(e, note.id)}
-                      disabled={deletingId === note.id}
-                      className="ml-2 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400"
-                      aria-label="Delete note"
-                    >
-                      {deletingId === note.id ? (
-                        <span className="text-xs">...</span>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                  <div className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3">
+                {/* Main content area (clickable) */}
+                <div 
+                  onClick={(e) => handleNoteClick(e, note.id)}
+                  className="flex-grow p-4 cursor-pointer overflow-hidden flex flex-col"
+                >
+                  <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate mb-2">
+                    {note.title || 'Untitled Note'}
+                  </h2>
+                  
+                  <div className="text-gray-600 dark:text-gray-300 text-sm flex-grow overflow-hidden">
                     {getExcerpt(note.content)}
                   </div>
+                  
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                    {formatDate(note.lastUpdated)}
+                    {note.id && note.id.startsWith('local-') && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
+                        Not synced
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 text-xs text-gray-500 dark:text-gray-400 flex justify-between items-center">
-                  <span>{formatDate(note.lastUpdated)}</span>
-                  {note.id && note.id.startsWith('local-') && (
-                    <span className="px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
-                      Not synced
-                    </span>
-                  )}
+                
+                {/* Action buttons footer */}
+                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center border-t border-gray-100 dark:border-gray-700">
+                  {/* Download Button */}
+                  <motion.button
+                    onClick={(e) => handleDownloadNote(e, note)}
+                    className="p-1.5 rounded-full text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative"
+                    aria-label="Download note"
+                    whileHover="hover"
+                    initial="initial"
+                  >
+                    <div className="w-5 h-5 relative">
+                      {/* Document Icon */}
+                      <motion.svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="absolute inset-0"
+                        variants={{
+                          initial: { y: 0, opacity: 1 },
+                          hover: { y: -8, opacity: 0 }
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <path
+                          d="M14 2.5H6C5.44772 2.5 5 2.94772 5 3.5V20.5C5 21.0523 5.44772 21.5 6 21.5H18C18.5523 21.5 19 21.0523 19 20.5V7.5L14 2.5Z"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M14 2.5V7.5H19"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M16 12.5H8"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M16 16.5H8"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M10 8.5H9H8"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </motion.svg>
+
+                      {/* Download Arrow and Circle */}
+                      <motion.svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="absolute inset-0"
+                        variants={{
+                          initial: { y: 8, opacity: 0 },
+                          hover: { y: 0, opacity: 1 }
+                        }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {/* Circle */}
+                        <motion.circle
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          variants={{
+                            initial: { pathLength: 0 },
+                            hover: { pathLength: 1 }
+                          }}
+                          transition={{ duration: 0.6, ease: "easeInOut" }}
+                        />
+
+                        {/* Arrow */}
+                        <motion.path
+                          d="M12 8V16M12 16L16 12M12 16L8 12"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          variants={{
+                            initial: { y: -4, opacity: 0 },
+                            hover: { y: 0, opacity: 1 }
+                          }}
+                          transition={{ duration: 0.4, delay: 0.2 }}
+                        />
+                      </motion.svg>
+
+                      {/* Pulse Effect */}
+                      <motion.div
+                        className="absolute inset-0 rounded-full bg-blue-400 dark:bg-blue-600"
+                        variants={{
+                          initial: { scale: 0, opacity: 0 },
+                          hover: { 
+                            scale: 1.2, 
+                            opacity: [0, 0.2, 0],
+                            transition: { 
+                              repeat: Infinity, 
+                              duration: 1.2, 
+                              repeatDelay: 0.2
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </motion.button>
+                  
+                  {/* Trash Button */}
+                  <motion.button
+                    onClick={(e) => openDeleteModal(e, note)}
+                    disabled={deletingId === note.id}
+                    className="p-1.5 rounded-full text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative"
+                    aria-label="Delete note"
+                    whileHover="hover"
+                    initial="initial"
+                  >
+                    {deletingId === note.id ? (
+                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent border-gray-400 animate-spin" />
+                    ) : (
+                      <div className="w-5 h-5 relative">
+                        {/* Traditional Trash Can Body */}
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          className="w-5 h-5"
+                        >
+                          {/* Trash can body */}
+                          <path d="M3 6h18v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
+                          {/* Vertical lines inside trash can */}
+                          <line x1="8" y1="10" x2="8" y2="18" />
+                          <line x1="12" y1="10" x2="12" y2="18" />
+                          <line x1="16" y1="10" x2="16" y2="18" />
+                        </svg>
+                        
+                        {/* Animated Lid - Pops off on hover */}
+                        <motion.svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="w-5 h-5 absolute top-0 left-0"
+                          variants={{
+                            initial: { y: 0 },
+                            hover: { y: -5 }
+                          }}
+                          transition={{ 
+                            type: "spring", 
+                            stiffness: 500, 
+                            damping: 15
+                          }}
+                        >
+                          {/* Trash can lid */}
+                          <path d="M3 6h18" />
+                          {/* Top arch */}
+                          <path d="M10 6V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+                        </motion.svg>
+                        
+                        {/* Red Pulse Effect */}
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-red-400 dark:bg-red-600"
+                          variants={{
+                            initial: { scale: 0, opacity: 0 },
+                            hover: { 
+                              scale: 1.2, 
+                              opacity: [0, 0.2, 0],
+                              transition: { 
+                                repeat: Infinity, 
+                                duration: 1.2, 
+                                repeatDelay: 0.2
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                  </motion.button>
                 </div>
-              </Link>
+              </motion.div>
             ))}
           </div>
         )}
         
         {/* Floating action button */}
-        <div className="fixed bottom-6 right-6">
-          <button
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.3, duration: 0.3 }}
+          className="fixed bottom-6 right-6"
+        >
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={handleCreateNote}
             className="bg-purple-600 hover:bg-purple-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors"
             aria-label="Create new note"
@@ -259,9 +529,17 @@ function NotesList() {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={noteToDelete?.title}
+      />
     </div>
   );
 }

@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from './context/AuthContext';
 import SlideInMenu from './components/SlideInMenu';
 import LandingPage from './pages/LandingPage';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import NotesList from './components/NotesList';
+import TrashView from './components/TrashView';
 import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import StableNoteEditor from './components/StableNoteEditor'; // Import the stable editor
+import SingleNoteEditor from './components/SingleNoteEditor';
 
 function App() {
   const { currentUser } = useAuth();
@@ -43,55 +45,60 @@ function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
       <SlideInMenu />
       
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={
-          currentUser ? <Navigate to={getInitialRedirect()} replace /> : <LandingPage />
-        } />
-        <Route path="/login" element={
-          currentUser ? <Navigate to={getInitialRedirect()} replace /> : <Login />
-        } />
-        <Route path="/signup" element={
-          currentUser ? <Navigate to={getInitialRedirect()} replace /> : <SignUp />
-        } />
-        
-        {/* Protected routes - using StableNoteEditor instead */}
-        <Route
-          path="/notes"
-          element={
-            <ProtectedRoute>
-              <NotesList />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/notes/new"
-          element={
-            <ProtectedRoute>
-              <StableNoteEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/notes/:noteId"
-          element={
-            <ProtectedRoute>
-              <StableNoteEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <SettingsPage />
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          {/* Public routes */}
+          <Route path="/" element={
+            currentUser ? <Navigate to={getInitialRedirect()} replace /> : <LandingPage />
+          } />
+          <Route path="/login" element={
+            currentUser ? <Navigate to={getInitialRedirect()} replace /> : <Login />
+          } />
+          <Route path="/signup" element={
+            currentUser ? <Navigate to={getInitialRedirect()} replace /> : <SignUp />
+          } />
+          
+          {/* Protected routes */}
+          <Route
+            path="/notes"
+            element={
+              <ProtectedRoute>
+                <NotesList />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/notes/:noteId"
+            element={
+              <ProtectedRoute>
+                <SingleNoteEditor />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/trash"
+            element={
+              <ProtectedRoute>
+                <TrashView />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AnimatePresence>
     </div>
   );
 }

@@ -11,9 +11,11 @@
   },
   "dependencies": {
     "firebase": "^11.6.1",
+    "framer-motion": "^12.9.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router-dom": "^7.5.3"
+    "react-router-dom": "^7.5.3",
+    "react-transition-group": "^4.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
