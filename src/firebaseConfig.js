@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, OAuthProvider } from "firebase/auth";
 import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 // Your web app's Firebase configuration
@@ -19,6 +19,13 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+
+// Initialize Microsoft Auth Provider
+export const microsoftProvider = new OAuthProvider('microsoft.com');
+microsoftProvider.setCustomParameters({
+  // Force re-consent prompt
+  prompt: 'consent',
+});
 
 // Enable offline persistence for better performance
 enableIndexedDbPersistence(db)

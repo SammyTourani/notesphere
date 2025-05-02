@@ -1,7 +1,7 @@
 // src/pages/SignUp.jsx
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth, db } from '../firebaseConfig';
+import { auth, db, microsoftProvider } from '../firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
 import {
@@ -18,6 +18,7 @@ function SignUp() {
   const [error, setError] = useState('');
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
+  const [isLoadingMicrosoft, setIsLoadingMicrosoft] = useState(false);
   const navigate = useNavigate();
   const { isGuestMode, disableGuestMode } = useAuth();
   const { getMergeOptions } = useNotes();
@@ -137,7 +138,7 @@ function SignUp() {
 
   // --- Handler for Google Sign Up / Sign In ---
   const handleGoogleSignUp = async () => {
-     setError('');
+    setError('');
     setIsLoadingGoogle(true);
     const provider = new GoogleAuthProvider();
 
@@ -160,6 +161,35 @@ function SignUp() {
     }
   };
 
+  // --- Handler for Microsoft Sign Up / Sign In ---
+  const handleMicrosoftSignUp = async () => {
+    setError('');
+    setIsLoadingMicrosoft(true);
+
+    try {
+      const result = await signInWithPopup(auth, microsoftProvider);
+      const user = result.user;
+      console.log("User signed up/in with Microsoft:", user);
+      
+      // Transfer notes if in guest mode - pass user object directly
+      await handleNoteTransfer(user);
+    } catch (err) {
+      console.error("Firebase Microsoft sign-in error:", err.code, err.message);
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in process cancelled.');
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setError('An account already exists with the same email address but different sign-in credentials.');
+      } else {
+        setError('Failed to sign in with Microsoft. Please try again.');
+      }
+    } finally {
+      setIsLoadingMicrosoft(false);
+    }
+  };
+
+  // Are any authentication methods loading?
+  const isLoading = isLoadingEmail || isLoadingGoogle || isLoadingMicrosoft;
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
@@ -180,22 +210,22 @@ function SignUp() {
           {/* Inputs disabled based on loading states */}
           <div className="mb-4">
             <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
-            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="you@example.com" required disabled={isLoadingEmail || isLoadingGoogle} />
+            <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="you@example.com" required disabled={isLoading} />
           </div>
           <div className="mb-4">
              <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">Password</label>
-            <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="••••••••" required disabled={isLoadingEmail || isLoadingGoogle} />
+            <input type="password" id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="••••••••" required disabled={isLoading} />
             <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters long.</p>
           </div>
           <div className="mb-6">
              <label htmlFor="confirmPassword" className="block text-gray-700 text-sm font-bold mb-2">Confirm Password</label>
-            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="••••••••" required disabled={isLoadingEmail || isLoadingGoogle} />
+            <input type="password" id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="••••••••" required disabled={isLoading} />
           </div>
           <div className="mb-4">
             <button
               type="submit"
               className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${isLoadingEmail ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={isLoadingEmail || isLoadingGoogle} // Disable if any are loading
+              disabled={isLoading}
             >
               {isLoadingEmail ? 'Signing Up...' : 'Sign Up with Email'}
             </button>
@@ -216,11 +246,29 @@ function SignUp() {
                 onClick={handleGoogleSignUp}
                 type="button"
                 className={`flex w-full items-center justify-center rounded bg-white px-6 py-2.5 text-sm font-medium uppercase leading-normal text-black shadow-md transition duration-150 ease-in-out hover:shadow-lg focus:shadow-lg focus:outline-none focus:ring-0 active:shadow-lg border border-gray-300 ${isLoadingGoogle ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isLoadingEmail || isLoadingGoogle} // Disable if any are loading
+                disabled={isLoading}
             >
                 {/* Google Icon */}
                 <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.4 0 6.3 1.2 8.7 3.4l6.5-6.5C35.3 2.6 30.1 0 24 0 14.9 0 7.4 5.4 4 13l7.8 6C13.8 12.8 18.5 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.7 24.1c0-1.6-.1-3.1-.4-4.6H24v8.8h12.8c-.6 2.8-2.3 5.2-4.8 6.8l7.8 6c4.6-4.2 7.3-10.2 7.3-17z"></path><path fill="#FBBC05" d="M11.8 28.1c-.6-1.8-.9-3.7-.9-5.6s.3-3.8.9-5.6l-7.8-6C1.6 15.7 0 20.1 0 24.6s1.6 8.9 4 13l7.8-6z"></path><path fill="#34A853" d="M24 48c5.9 0 10.9-1.9 14.6-5.2l-7.8-6c-2 1.3-4.5 2.1-7.3 2.1-5.5 0-10.2-3.3-11.9-7.9l-7.8 6C7.2 42.4 14.9 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
                 {isLoadingGoogle ? 'Processing...' : 'Continue with Google'}
+            </button>
+            
+            {/* Microsoft Button */}
+            <button
+                onClick={handleMicrosoftSignUp}
+                type="button"
+                className={`flex w-full items-center justify-center rounded bg-white px-6 py-2.5 text-sm font-medium uppercase leading-normal text-black shadow-md transition duration-150 ease-in-out hover:shadow-lg focus:shadow-lg focus:outline-none focus:ring-0 active:shadow-lg border border-gray-300 ${isLoadingMicrosoft ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isLoading}
+            >
+                {/* Microsoft Icon */}
+                <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 23 23">
+                  <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
+                  <path fill="#f35325" d="M1 1h10v10H1z"/>
+                  <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                  <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                  <path fill="#ffba08" d="M12 12h10v10H12z"/>
+                </svg>
+                {isLoadingMicrosoft ? 'Processing...' : 'Continue with Microsoft'}
             </button>
          </div>
          {/* --- End Social Sign Up Buttons --- */}
