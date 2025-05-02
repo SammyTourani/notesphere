@@ -31,8 +31,8 @@ function Login() {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('User logged in successfully (Email/Pass):', userCredential.user);
-      // alert('Login successful! Redirecting...'); // Optional: remove alert for smoother flow
-      navigate('/app'); // <-- CORRECT REDIRECT TARGET
+      // Redirect to notes page instead of /app
+      navigate('/notes');
 
     } catch (err) {
       console.error("Firebase login error (Email/Pass):", err.code, err.message);
@@ -66,8 +66,8 @@ function Login() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
       console.log("User signed in with Google:", user);
-      // alert('Successfully signed in with Google! Redirecting...'); // Optional: remove alert
-      navigate('/app'); // <-- CORRECT REDIRECT TARGET
+      // Redirect to notes page instead of /app
+      navigate('/notes');
 
     } catch (err) {
       console.error("Firebase Google sign-in error:", err.code, err.message);
@@ -80,8 +80,6 @@ function Login() {
         setIsLoadingGoogle(false);
     }
   };
-
-  // --- Handler for Microsoft Sign In (Removed for simplicity) ---
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -132,7 +130,6 @@ function Login() {
               <svg className="mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.4 0 6.3 1.2 8.7 3.4l6.5-6.5C35.3 2.6 30.1 0 24 0 14.9 0 7.4 5.4 4 13l7.8 6C13.8 12.8 18.5 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.7 24.1c0-1.6-.1-3.1-.4-4.6H24v8.8h12.8c-.6 2.8-2.3 5.2-4.8 6.8l7.8 6c4.6-4.2 7.3-10.2 7.3-17z"></path><path fill="#FBBC05" d="M11.8 28.1c-.6-1.8-.9-3.7-.9-5.6s.3-3.8.9-5.6l-7.8-6C1.6 15.7 0 20.1 0 24.6s1.6 8.9 4 13l7.8-6z"></path><path fill="#34A853" d="M24 48c5.9 0 10.9-1.9 14.6-5.2l-7.8-6c-2 1.3-4.5 2.1-7.3 2.1-5.5 0-10.2-3.3-11.9-7.9l-7.8 6C7.2 42.4 14.9 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
               {isLoadingGoogle ? 'Processing...' : 'Continue with Google'}
           </button>
-          {/* Removed Microsoft Button */}
         </div>
         {/* --- End Social Login Buttons --- */}
 
@@ -151,4 +148,3 @@ function Login() {
 }
 
 export default Login;
-

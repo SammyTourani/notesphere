@@ -1,42 +1,38 @@
-// src/firebaseConfig.js
-
-// Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-// If you plan to use Analytics (optional)
-// import { getAnalytics } from "firebase/analytics";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration is read from environment variables
+// Your web app's Firebase configuration
+// Replace these with your actual Firebase config values if they differ
 const firebaseConfig = {
-  // IMPORTANT: Make sure VITE_ prefix is used in your .env file
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID // Optional
+  apiKey: "AIzaSyBugqtCMkECjHyC_wDQzlB9cvhbzp5DiuA", // This appears to be your actual API key from console logs
+  authDomain: "notesphere-f0b93.firebaseapp.com", // Replace with your authDomain
+  projectId: "notesphere-f0b93", // This appears to be your project ID from console logs
+  storageBucket: "notesphere-f0b93.appspot.com", // Replace with your storageBucket
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // Replace with your messagingSenderId
+  appId: "YOUR_APP_ID" // Replace with your appId
 };
-
-// --- DIAGNOSTIC LOG ---
-// Log the API key being read from the environment variable
-// Check your browser console to see what value is actually being used.
-console.log("API Key read from env:", import.meta.env.VITE_FIREBASE_API_KEY);
-// --------------------
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize and export Firebase services
-export const auth = getAuth(app); // Export auth instance
-export const db = getFirestore(app); // Export Firestore instance
+// Initialize Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
 
-// If you plan to use Analytics (optional)
-// export const analytics = getAnalytics(app);
+// Enable offline persistence for better performance
+enableIndexedDbPersistence(db)
+  .catch((err) => {
+    if (err.code === 'failed-precondition') {
+      // Multiple tabs open, persistence can only be enabled in one tab at a time
+      console.warn('Firebase persistence failed: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      // The current browser does not support all of the features required
+      console.warn('Firebase persistence not available in this browser');
+    } else {
+      console.error('Firebase persistence error:', err);
+    }
+  });
 
-// Optional: Log success/failure of initialization (check browser console)
-// console.log("Firebase App Initialized:", app.name ? "Success" : "Failure");
+// Export the app as well in case we need it elsewhere
+export default app;
