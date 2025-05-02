@@ -16,6 +16,9 @@ function App() {
   const { currentUser } = useAuth();
   const location = useLocation();
   
+  // Handle the intentional logout flag for routes
+  const isIntentionalLogout = sessionStorage.getItem('intentional_logout');
+  
   // Update last visited page for returning users
   useEffect(() => {
     if (!currentUser) return;
@@ -41,19 +44,34 @@ function App() {
     return '/notes';
   };
   
+  // Clear intentional logout flag if on landing page
+  useEffect(() => {
+    if (location.pathname === '/') {
+      sessionStorage.removeItem('intentional_logout');
+    }
+  }, [location.pathname]);
+  
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
       <SlideInMenu />
       
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
-          {/* Public routes */}
-          <Route path="/" element={
-            currentUser ? <Navigate to={getInitialRedirect()} replace /> : <LandingPage />
-          } />
+          {/* Public routes - Landing page should always show when requested */}
+          <Route path="/" element={<LandingPage />} />
+          
           <Route path="/login" element={
-            currentUser ? <Navigate to={getInitialRedirect()} replace /> : <Login />
+            currentUser ? (
+              <Navigate to={getInitialRedirect()} replace />
+            ) : (
+              isIntentionalLogout ? (
+                <Navigate to="/" replace />
+              ) : (
+                <Login />
+              )
+            )
           } />
+          
           <Route path="/signup" element={
             currentUser ? <Navigate to={getInitialRedirect()} replace /> : <SignUp />
           } />

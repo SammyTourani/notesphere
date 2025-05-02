@@ -1,72 +1,98 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, title }) => {
+const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, title, isPermanent = false }) => {
   if (!isOpen) return null;
-
-  // Prevent clicks inside the modal from closing it
-  const handleModalClick = (e) => {
-    e.stopPropagation();
+  
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 }
+  };
+  
+  const modalVariants = {
+    hidden: { opacity: 0, y: 50, scale: 0.95 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.2, ease: 'easeOut' } }
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        >
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: "spring", damping: 20, stiffness: 300 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden"
-            onClick={handleModalClick}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            variants={backdropVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+            onClick={onClose}
+          />
+          
+          <motion.div 
+            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl overflow-hidden w-full max-w-md relative z-10"
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
           >
-            <div className="p-6">
-              <div className="flex items-center justify-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-red-600 dark:text-red-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <div className="p-5">
+              <div className="flex items-start mb-4">
+                <div className={`p-2 rounded-full ${isPermanent ? 'bg-red-100 dark:bg-red-900/30' : 'bg-yellow-100 dark:bg-yellow-900/30'}`}>
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className={`h-6 w-6 ${isPermanent ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+                    />
                   </svg>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+                    {isPermanent ? 'Permanently delete note?' : 'Move to trash?'}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    {isPermanent 
+                      ? 'This note will be permanently deleted and cannot be recovered.'
+                      : 'This note will be moved to the trash. You can restore it later if needed.'
+                    }
+                  </p>
+                  {title && (
+                    <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700/50 rounded text-sm font-medium text-gray-800 dark:text-gray-300 truncate">
+                      "{title || 'Untitled Note'}"
+                    </div>
+                  )}
                 </div>
               </div>
               
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white text-center mb-2">
-                Move to Trash?
-              </h3>
-              
-              <p className="text-gray-600 dark:text-gray-300 text-center mb-6">
-                {title ? `"${title}"` : "This note"} will be moved to the trash. You can restore it from there if needed.
-              </p>
-              
-              <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                   onClick={onClose}
-                  className="px-4 py-2 w-full text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancel
-                </motion.button>
-                
-                <motion.button
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
+                </button>
+                <button
+                  type="button"
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
+                    isPermanent 
+                      ? 'bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-800' 
+                      : 'bg-yellow-600 hover:bg-yellow-700 dark:bg-yellow-700 dark:hover:bg-yellow-800'
+                  }`}
                   onClick={onConfirm}
-                  className="px-4 py-2 w-full text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
                 >
-                  Yes, Move to Trash
-                </motion.button>
+                  {isPermanent ? 'Yes, Delete Permanently' : 'Yes, Move to Trash'}
+                </button>
               </div>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -6,6 +6,9 @@ import { motion } from 'framer-motion';
 function ProtectedRoute({ children }) {
   const { currentUser, loading } = useAuth();
   
+  // Check for logout redirect token
+  const hasLogoutToken = localStorage.getItem('logout_redirect');
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -23,6 +26,13 @@ function ProtectedRoute({ children }) {
   }
   
   if (!currentUser) {
+    // If we have a logout token, redirect to landing page
+    if (hasLogoutToken) {
+      localStorage.removeItem('logout_redirect');
+      return <Navigate to="/" replace />;
+    }
+    
+    // Standard unauthenticated redirect
     return <Navigate to="/login" replace />;
   }
   

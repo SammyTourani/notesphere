@@ -311,15 +311,15 @@ function NotesList() {
                 
                 {/* Action buttons footer */}
                 <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center border-t border-gray-100 dark:border-gray-700">
-                  {/* Download Button */}
+                  {/* Download Button - FIXED CURSOR ISSUE */}
                   <motion.button
                     onClick={(e) => handleDownloadNote(e, note)}
-                    className="p-1.5 rounded-full text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative"
+                    className="p-1.5 rounded-full text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
                     aria-label="Download note"
                     whileHover="hover"
                     initial="initial"
                   >
-                    <div className="w-5 h-5 relative">
+                    <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
                       {/* Document Icon */}
                       <motion.svg
                         viewBox="0 0 24 24"
@@ -331,6 +331,7 @@ function NotesList() {
                           hover: { y: -8, opacity: 0 }
                         }}
                         transition={{ duration: 0.3 }}
+                        style={{ pointerEvents: 'none' }}
                       >
                         <path
                           d="M14 2.5H6C5.44772 2.5 5 2.94772 5 3.5V20.5C5 21.0523 5.44772 21.5 6 21.5H18C18.5523 21.5 19 21.0523 19 20.5V7.5L14 2.5Z"
@@ -380,6 +381,7 @@ function NotesList() {
                           hover: { y: 0, opacity: 1 }
                         }}
                         transition={{ duration: 0.3 }}
+                        style={{ pointerEvents: 'none' }}
                       >
                         {/* Circle */}
                         <motion.circle
@@ -425,15 +427,16 @@ function NotesList() {
                             }
                           }
                         }}
+                        style={{ pointerEvents: 'none' }}
                       />
                     </div>
                   </motion.button>
                   
-                  {/* Trash Button */}
+                  {/* Trash Button - MADE SKINNIER */}
                   <motion.button
                     onClick={(e) => openDeleteModal(e, note)}
                     disabled={deletingId === note.id}
-                    className="p-1.5 rounded-full text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative"
+                    className="p-1.5 rounded-full text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
                     aria-label="Delete note"
                     whileHover="hover"
                     initial="initial"
@@ -441,8 +444,8 @@ function NotesList() {
                     {deletingId === note.id ? (
                       <div className="w-5 h-5 rounded-full border-2 border-t-transparent border-gray-400 animate-spin" />
                     ) : (
-                      <div className="w-5 h-5 relative">
-                        {/* Traditional Trash Can Body */}
+                      <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
+                        {/* Skinnier Trash Can Body */}
                         <svg 
                           xmlns="http://www.w3.org/2000/svg" 
                           viewBox="0 0 24 24" 
@@ -453,12 +456,12 @@ function NotesList() {
                           strokeLinejoin="round" 
                           className="w-5 h-5"
                         >
-                          {/* Trash can body */}
-                          <path d="M3 6h18v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z" />
-                          {/* Vertical lines inside trash can */}
-                          <line x1="8" y1="10" x2="8" y2="18" />
+                          {/* Modified path to make trash can skinnier */}
+                          <path d="M4 6h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" />
+                          {/* Adjusted vertical lines inside trash can */}
+                          <line x1="9" y1="10" x2="9" y2="18" />
                           <line x1="12" y1="10" x2="12" y2="18" />
-                          <line x1="16" y1="10" x2="16" y2="18" />
+                          <line x1="15" y1="10" x2="15" y2="18" />
                         </svg>
                         
                         {/* Animated Lid - Pops off on hover */}
@@ -480,9 +483,10 @@ function NotesList() {
                             stiffness: 500, 
                             damping: 15
                           }}
+                          style={{ pointerEvents: 'none' }}
                         >
                           {/* Trash can lid */}
-                          <path d="M3 6h18" />
+                          <path d="M4 6h16" />
                           {/* Top arch */}
                           <path d="M10 6V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
                         </motion.svg>
@@ -502,6 +506,7 @@ function NotesList() {
                               }
                             }
                           }}
+                          style={{ pointerEvents: 'none' }}
                         />
                       </div>
                     )}

@@ -1,7 +1,6 @@
-// src/context/AuthContext.jsx
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { auth } from '../firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth'; // Import signOut
 
 // 1. Create the Context
 const AuthContext = createContext();
@@ -15,6 +14,18 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Function to handle user logout
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      console.log("User logged out successfully");
+      return { success: true };
+    } catch (error) {
+      console.error("Logout error:", error);
+      return { success: false, error: error.message };
+    }
+  };
 
   // 3. Set up the Firebase Auth State Listener
   useEffect(() => {
@@ -30,7 +41,8 @@ export function AuthProvider({ children }) {
   // 4. Define the value provided by the context
   const value = {
     currentUser,
-    loading
+    loading,
+    logout // Include the logout function in the context value
   };
 
   // 5. Return the Provider, ALWAYS rendering children
