@@ -1,5 +1,6 @@
+// src/components/NotesList.jsx
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useNotes } from '../context/NotesContext';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -7,7 +8,7 @@ import DeleteConfirmationModal from './DeleteConfirmationModal';
 
 function NotesList() {
   const { notes, loading, error, isOffline, moveToTrash, refreshNotes } = useNotes();
-  const { currentUser } = useAuth();
+  const { currentUser, isGuestMode } = useAuth();
   const [searchText, setSearchText] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [filteredNotes, setFilteredNotes] = useState([]);
@@ -204,11 +205,21 @@ function NotesList() {
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
           <div className="flex items-center mb-4 sm:mb-0">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Notes</h1>
+            
+            {/* Status indicators */}
             {isOffline && (
               <span className="ml-3 px-2 py-1 text-xs font-medium bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded-full">
                 Offline
               </span>
             )}
+            
+            {/* Guest mode indicator */}
+            {isGuestMode && (
+              <span className="ml-3 px-2 py-1 text-xs font-medium bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
+                Guest Mode
+              </span>
+            )}
+            
             {/* Manual refresh button with enhanced spin animation */}
             <motion.button
               whileHover={{ rotate: 360 }}
@@ -304,6 +315,11 @@ function NotesList() {
                     {note.id && note.id.startsWith('local-') && (
                       <span className="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
                         Not synced
+                      </span>
+                    )}
+                    {note.id && note.id.startsWith('guest-') && (
+                      <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs">
+                        Guest Note
                       </span>
                     )}
                   </div>

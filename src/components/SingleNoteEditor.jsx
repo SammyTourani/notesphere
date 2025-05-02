@@ -1,5 +1,6 @@
+// src/components/SingleNoteEditor.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
 import { motion } from 'framer-motion';
@@ -7,7 +8,8 @@ import { motion } from 'framer-motion';
 function SingleNoteEditor() {
   const { noteId } = useParams();
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const location = useLocation();
+  const { currentUser, isGuestMode } = useAuth();
   const { getNote, createNote, updateNote, isOffline } = useNotes();
   
   // State
@@ -21,7 +23,16 @@ function SingleNoteEditor() {
   const isSavingRef = useRef(false);
   const saveTimeoutRef = useRef(null);
   const actualNoteIdRef = useRef(noteId);
-  const isNewNoteProcessed = useRef(false); // Track if we've already processed a new note
+  const hasBeenSavedRef = useRef(false); // Track if note has been saved at least once
+  
+  // Handle undefined noteId - redirect to new note ONLY if we're not already at /notes/new
+  useEffect(() => {
+    const path = location.pathname;
+    if (noteId === undefined && path !== '/notes/new') {
+      console.log("noteId is undefined and not on /notes/new, redirecting");
+      navigate('/notes/new', { replace: true });
+    }
+  }, [noteId, navigate, location.pathname]);
   
   // Clear timeouts on unmount
   useEffect(() => {
@@ -32,46 +43,74 @@ function SingleNoteEditor() {
     };
   }, []);
   
+  // Reset state when redirected to /notes/new
+  useEffect(() => {
+    if (location.pathname === '/notes/new' && noteId === 'new') {
+      console.log("Resetting editor state for new note");
+      setTitle('');
+      setContent('');
+      actualNoteIdRef.current = null;
+      hasBeenSavedRef.current = false;
+    }
+  }, [location.pathname, noteId]);
+  
   // Initial load
   useEffect(() => {
-    loadNote();
-  }, []);
-  
-  // Handle URL parameter changes - only reload if it's a genuinely different note
-  useEffect(() => {
-    // Don't reload if we're staying on the same note or if we're on a new note
-    // that has been processed (actualNoteIdRef.current is set to the real ID)
-    if (noteId !== 'new' && noteId !== actualNoteIdRef.current) {
-      // Reset the new note processed flag
-      isNewNoteProcessed.current = false;
+    console.log("Initial load effect triggered with noteId:", noteId, "isGuestMode:", isGuestMode, "path:", location.pathname);
+    
+    // Check if we're on the /notes/new route
+    if (location.pathname === '/notes/new') {
+      console.log("On /notes/new route, loading empty editor");
+      setTitle('');
+      setContent('');
+      actualNoteIdRef.current = null;
+      hasBeenSavedRef.current = false;
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+    
+    // Skip loading if noteId is undefined
+    if (noteId !== undefined) {
       loadNote();
     }
-  }, [noteId]);
+  }, [noteId, location.pathname]);
   
   // Load note function
   const loadNote = async () => {
-    if (!currentUser) return;
-    
+    console.log("loadNote called - noteId:", noteId, "isGuestMode:", isGuestMode);
     setIsLoading(true);
     
     try {
-      // If this is a new note, reset and return
+      // Special handling for new note
       if (noteId === 'new') {
+        console.log("This is a new note, resetting editor");
         setTitle('');
         setContent('');
         actualNoteIdRef.current = null;
-        isNewNoteProcessed.current = false;
+        hasBeenSavedRef.current = false;
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!noteId) {
+        console.log("No noteId provided, cannot load note");
+        setError('Invalid note ID');
         setIsLoading(false);
         return;
       }
       
       // Load existing note
+      console.log("Trying to load note with ID:", noteId);
       const result = await getNote(noteId);
       
       if (result.success) {
+        console.log("Note loaded successfully:", result.data);
         setTitle(result.data.title || '');
         setContent(result.data.content || '');
         actualNoteIdRef.current = noteId;
+        hasBeenSavedRef.current = true; // Mark as saved since we're loading an existing note
         setError(null);
       } else {
         console.error('Note not found or error:', result.error);
@@ -87,6 +126,7 @@ function SingleNoteEditor() {
   
   // CRITICAL: Update URL without causing a component remount
   const updateUrlSilently = useCallback((newNoteId) => {
+    console.log("Updating URL silently to:", newNoteId);
     if (window.history && newNoteId) {
       // This is the key - use history.replaceState instead of navigate
       window.history.replaceState(
@@ -95,9 +135,8 @@ function SingleNoteEditor() {
         `/notes/${newNoteId}`
       );
       actualNoteIdRef.current = newNoteId;
-      // Mark that we've processed the new note
-      isNewNoteProcessed.current = true;
-      console.log('URL silently updated to:', newNoteId);
+      hasBeenSavedRef.current = true; // Mark as saved after successful creation
+      console.log('URL silently updated to:', newNoteId, 'actualNoteIdRef is now:', actualNoteIdRef.current);
     }
   }, []);
   
@@ -117,29 +156,52 @@ function SingleNoteEditor() {
   
   // Animation transition to notes list
   const handleBackToNotes = () => {
+    // If we have unsaved changes, save them before navigating away
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       
       // Force save if there are unsaved changes
       if (title || content) {
         const noteData = { title, content };
-        // Use actualNoteIdRef to determine if this is a new note
-        if (actualNoteIdRef.current === null) {
-          createNote(noteData);
+        
+        if (!hasBeenSavedRef.current) {
+          // This is a new note that hasn't been saved yet
+          createNote(noteData)
+            .then(result => {
+              if (result.success) {
+                console.log("Note created on navigation away");
+              }
+              navigate('/notes');
+            })
+            .catch(err => {
+              console.error("Error creating note on navigation away:", err);
+              navigate('/notes');
+            });
+          return;
         } else {
-          updateNote(actualNoteIdRef.current, noteData);
+          // This is an existing note
+          updateNote(actualNoteIdRef.current, noteData)
+            .then(() => {
+              navigate('/notes');
+            })
+            .catch(err => {
+              console.error("Error updating note on navigation away:", err);
+              navigate('/notes');
+            });
+          return;
         }
       }
     }
     
-    // Add a slight delay for visual transition
-    setTimeout(() => {
-      navigate('/notes');
-    }, 100);
+    // If no unsaved changes, just navigate back
+    navigate('/notes');
   };
   
   // Debounced save
   const debounceSave = useCallback((newTitle, newContent) => {
+    console.log("debounceSave called with title:", newTitle, "content length:", newContent?.length, 
+      "hasBeenSaved:", hasBeenSavedRef.current, "actualNoteId:", actualNoteIdRef.current);
+    
     // Skip empty notes
     if (!newTitle.trim() && !newContent.trim()) return;
     
@@ -156,17 +218,17 @@ function SingleNoteEditor() {
         
         const noteData = { title: newTitle, content: newContent };
         
-        // CRITICAL CHANGE: Use actualNoteIdRef and isNewNoteProcessed to determine if this is a new note
-        // Instead of using noteId from useParams()
-        if (actualNoteIdRef.current === null || (!isNewNoteProcessed.current && noteId === 'new')) {
-          console.log('Creating new note');
+        // Check if this is a new note that hasn't been saved yet
+        if (!hasBeenSavedRef.current) {
+          console.log('Creating new note - has not been saved before');
           const result = await createNote(noteData);
           
           if (result.success) {
-            // CRITICAL: Update URL without component remount
+            console.log("Note created successfully with ID:", result.id);
             updateUrlSilently(result.id);
             setSaveStatus('Saved');
           } else {
+            console.error("Failed to create note:", result.error);
             setSaveStatus('Failed to save');
           }
         } 
@@ -188,7 +250,7 @@ function SingleNoteEditor() {
         }, 2000);
       }
     }, 800);
-  }, [noteId, createNote, updateNote, updateUrlSilently]);
+  }, [createNote, updateNote, updateUrlSilently]);
   
   if (isLoading) {
     return (
@@ -264,12 +326,18 @@ function SingleNoteEditor() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.3 }}
-        className="fixed top-4 right-1/2 transform translate-x-1/2 flex items-center justify-center z-10"
+        className="fixed top-4 left-1/2 transform -translate-x-1/2 flex items-center justify-center z-10"
       >
         <div className="flex items-center space-x-2 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm rounded-full px-3 py-1 text-xs">
           {isOffline && (
             <span className="text-yellow-600 dark:text-yellow-400 font-medium">
               Offline Mode
+            </span>
+          )}
+          
+          {isGuestMode && (
+            <span className="text-purple-600 dark:text-purple-400 font-medium">
+              Guest Mode
             </span>
           )}
           
@@ -304,7 +372,7 @@ function SingleNoteEditor() {
             onChange={handleTitleChange}
             placeholder="Note title..."
             className="w-full p-2 mb-2 bg-transparent text-gray-900 dark:text-white text-2xl font-bold focus:outline-none"
-            autoFocus={noteId === 'new'}
+            autoFocus={location.pathname === '/notes/new'}
           />
           
           {/* Content textarea */}

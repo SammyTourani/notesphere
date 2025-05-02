@@ -192,17 +192,17 @@ function LandingPage() {
             Your simple, elegant space to capture, organize, and access your thoughts anytime, anywhere.
           </motion.p>
 
-          {/* Call to Action Buttons Container with improved styling */}
+          {/* Call to Action Buttons Container - IMPROVED CENTERING */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
-            className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-6 mt-12 justify-center"
+            className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-4 mt-12 mx-auto max-w-3xl"
           >
-            {/* Get Started Button with enhanced effects */}
+            {/* Get Started Button - Now links to guest mode */}
             <Link
-              to="/signup"
-              className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/30 transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none overflow-hidden"
+              to="/guest"
+              className="w-full sm:w-auto min-w-[160px] text-center group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-blue-500/30 transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none overflow-hidden"
             >
               <span className="relative z-10">Get Started</span>
               <motion.div 
@@ -213,10 +213,24 @@ function LandingPage() {
               />
             </Link>
 
+            {/* Sign Up Button with gradient effect */}
+            <Link
+              to="/signup"
+              className="w-full sm:w-auto min-w-[160px] text-center group relative px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-lg font-semibold rounded-xl shadow-lg hover:shadow-purple-500/30 transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none overflow-hidden"
+            >
+              <span className="relative z-10">Sign Up</span>
+              <motion.div 
+                className="absolute inset-0 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl" 
+                initial={{ x: "100%", opacity: 0 }}
+                whileHover={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.4 }}
+              />
+            </Link>
+
             {/* Login Button with glass effect */}
             <Link
               to="/login"
-              className="px-8 py-4 bg-white/80 backdrop-blur-sm text-blue-600 text-lg font-semibold rounded-xl shadow-md hover:shadow-lg hover:bg-white border border-blue-200 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform hover:-translate-y-1"
+              className="w-full sm:w-auto min-w-[160px] text-center px-8 py-4 bg-white/80 backdrop-blur-sm text-blue-600 text-lg font-semibold rounded-xl shadow-md hover:shadow-lg hover:bg-white border border-blue-200 transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transform hover:-translate-y-1"
             >
               Log In
             </Link>
@@ -325,7 +339,7 @@ function LandingPage() {
                   transition={{ duration: 0.5, delay: 0.8 }}
                 >
                   <Link
-                    to="/signup"
+                    to="/guest"
                     className="px-8 py-3 bg-blue-600 text-white text-lg font-semibold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   >
                     Start Writing Now

@@ -1,7 +1,7 @@
-// src/pages/Login.jsx
-import React, { useState } from 'react';
+// src/components/Login.jsx
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { auth, db } from '../firebaseConfig';
+import { auth } from '../firebaseConfig';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
 import {
@@ -9,7 +9,6 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -19,73 +18,14 @@ function Login() {
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const navigate = useNavigate();
   const { isGuestMode, disableGuestMode } = useAuth();
-  const { getMergeOptions } = useNotes();
-  
-  // Check if there are guest notes to transfer
-  const { hasGuestNotes, guestNotesCount } = getMergeOptions();
+  const { transferGuestNotesToUser } = useNotes();
 
-  // Handler for transferring guest notes after login
-  const handleNoteTransfer = async (user) => {
-    if (isGuestMode && hasGuestNotes) {
-      console.log(`Transferring ${guestNotesCount} guest notes to user account using UID:`, user.uid);
-      
-      try {
-        // Perform direct transfer instead of relying on context
-        const storedNotes = localStorage.getItem('guestNotes');
-        if (!storedNotes) {
-          console.log("No guest notes found in localStorage");
-          disableGuestMode();
-          navigate('/notes');
-          return;
-        }
-        
-        const guestNotes = JSON.parse(storedNotes);
-        console.log(`Found ${guestNotes.length} guest notes to transfer directly`);
-        
-        // Create each note in Firestore
-        let transferredCount = 0;
-        
-        for (const note of guestNotes) {
-          try {
-            const newNote = {
-              title: note.title || '',
-              content: note.content || '',
-              userId: user.uid,
-              created: serverTimestamp(),
-              lastUpdated: serverTimestamp(),
-              deleted: false,
-              deletedAt: null
-            };
-            
-            // Add to Firestore using the direct db reference
-            const docRef = await addDoc(collection(db, 'notes'), newNote);
-            console.log(`Successfully transferred note to ID: ${docRef.id}`);
-            transferredCount++;
-          } catch (err) {
-            console.error(`Error transferring note:`, err);
-          }
-        }
-        
-        console.log(`Successfully transferred ${transferredCount} of ${guestNotes.length} notes directly`);
-        
-        // Clear guest notes after successful transfer to prevent duplicates
-        localStorage.removeItem('guestNotes');
-      } catch (err) {
-        console.error("Error during direct note transfer:", err);
-      } finally {
-        // Always disable guest mode after trying to transfer
-        disableGuestMode();
-        
-        // Clear the guest sign-in redirect flag
-        sessionStorage.removeItem('guestSignInRedirect');
-        
-        // Navigate to notes list
-        navigate('/notes');
-      }
-    } else {
-      // No notes to transfer or not in guest mode
+  // Handler to transfer guest notes after successful login
+  const transferNotesIfNeeded = async () => {
+    if (isGuestMode) {
+      console.log("Transferring guest notes to user account");
+      await transferGuestNotesToUser();
       disableGuestMode();
-      navigate('/notes');
     }
   };
 
@@ -105,8 +45,12 @@ function Login() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('User logged in successfully (Email/Pass):', userCredential.user);
       
-      // Transfer notes if in guest mode - pass user object directly
-      await handleNoteTransfer(userCredential.user);
+      // Transfer guest notes if needed
+      await transferNotesIfNeeded();
+      
+      // Redirect to notes page instead of /app
+      navigate('/notes');
+
     } catch (err) {
       console.error("Firebase login error (Email/Pass):", err.code, err.message);
       switch (err.code) {
@@ -140,8 +84,12 @@ function Login() {
       const user = result.user;
       console.log("User signed in with Google:", user);
       
-      // Transfer notes if in guest mode - pass user object directly
-      await handleNoteTransfer(user);
+      // Transfer guest notes if needed
+      await transferNotesIfNeeded();
+      
+      // Redirect to notes page
+      navigate('/notes');
+
     } catch (err) {
       console.error("Firebase Google sign-in error:", err.code, err.message);
        if (err.code === 'auth/popup-closed-by-user') {
@@ -160,14 +108,6 @@ function Login() {
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Log In</h2>
 
         {error && <p className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</p>}
-        
-        {/* Show guest mode note transfer message if applicable */}
-        {isGuestMode && hasGuestNotes && (
-          <div className="bg-blue-50 text-blue-700 p-3 rounded mb-4">
-            <p className="font-medium">You have {guestNotesCount} notes in guest mode</p>
-            <p className="text-sm mt-1">These will be transferred to your account when you log in.</p>
-          </div>
-        )}
 
         {/* --- Email/Password Form --- */}
         <form onSubmit={handleEmailLogin}>
@@ -214,19 +154,15 @@ function Login() {
         </div>
         {/* --- End Social Login Buttons --- */}
 
-        {/* --- Guest Mode Link --- */}
-        <div className="mt-6 flex justify-center items-center space-x-4">
-          <Link to="/guest" className="text-gray-600 hover:text-gray-800 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            Continue as Guest
+        {/* --- Link to Sign Up Page --- */}
+        <p className="mt-6 text-center text-sm text-gray-600">
+          Don't have an account?{' '}
+          <Link to="/signup" className="font-medium text-blue-600 hover:text-blue-500">
+            Sign Up
           </Link>
-          <span className="text-gray-400">|</span>
-          <Link to="/signup" className="text-blue-600 hover:text-blue-800">
-            Create Account
-          </Link>
-        </div>
+        </p>
+         {/* --- End Link to Sign Up Page --- */}
+
       </div>
     </div>
   );

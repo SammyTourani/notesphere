@@ -1,10 +1,13 @@
+// src/components/ProtectedRoute.jsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
+import GuestBanner from './GuestBanner';
 
-function ProtectedRoute({ children }) {
-  const { currentUser, loading } = useAuth();
+function ProtectedRoute({ children, allowGuest = false }) {
+  const { currentUser, loading, isGuestMode } = useAuth();
+  const location = useLocation();
   
   // Check for logout redirect token
   const hasLogoutToken = localStorage.getItem('logout_redirect');
@@ -25,18 +28,26 @@ function ProtectedRoute({ children }) {
     );
   }
   
-  if (!currentUser) {
-    // If we have a logout token, redirect to landing page
-    if (hasLogoutToken) {
-      localStorage.removeItem('logout_redirect');
-      return <Navigate to="/" replace />;
-    }
-    
-    // Standard unauthenticated redirect
-    return <Navigate to="/login" replace />;
+  // Allow access if user is authenticated OR if guest mode is enabled and this route allows guests
+  if (currentUser || (isGuestMode && allowGuest)) {
+    return (
+      <>
+        {/* Show the guest banner for guests */}
+        {isGuestMode && allowGuest && <GuestBanner />}
+        {/* The actual protected content */}
+        {children}
+      </>
+    );
   }
   
-  return children;
+  // If we have a logout token, redirect to landing page
+  if (hasLogoutToken) {
+    localStorage.removeItem('logout_redirect');
+    return <Navigate to="/" replace />;
+  }
+  
+  // Standard unauthenticated redirect - either to login or to guest mode
+  return <Navigate to="/login" replace />;
 }
 
 export default ProtectedRoute;
