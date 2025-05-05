@@ -1,764 +1,1200 @@
 // src/context/NotesContext.jsx
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, getDoc } from 'firebase/firestore';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../firebaseConfig';
 import { useAuth } from './AuthContext';
-import { v4 as uuidv4 } from 'uuid'; // Make sure to install uuid
+import { 
+  collection, 
+  doc, 
+  addDoc, 
+  updateDoc, 
+  getDocs, 
+  getDoc, 
+  query, 
+  where, 
+  Timestamp, 
+  orderBy,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
 
-// Create the NotesContext
+// Create context
 const NotesContext = createContext();
 
-// Use a custom hook to access the context
-export const useNotes = () => useContext(NotesContext);
-
-// Provider component
-export const NotesProvider = ({ children }) => {
+// Context Provider component
+export function NotesProvider({ children }) {
   const [notes, setNotes] = useState([]);
   const [trashedNotes, setTrashedNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const { currentUser, isGuestMode } = useAuth();
-
-  // Constants for guest mode
+  
+  // Local storage keys
+  const LOCAL_NOTES_KEY = 'localNotes';
   const GUEST_NOTES_KEY = 'guestNotes';
-  const GUEST_TRASH_KEY = 'guestTrash';
-
-  // Helper function to convert Firestore timestamps
-  const convertTimestamps = (data) => {
-    const result = { ...data };
-    
-    // Convert Firestore timestamps to ISO strings
-    if (result.created && typeof result.created.toDate === 'function') {
-      result.created = result.created.toDate().toISOString();
-    }
-    
-    if (result.lastUpdated && typeof result.lastUpdated.toDate === 'function') {
-      result.lastUpdated = result.lastUpdated.toDate().toISOString();
-    }
-    
-    if (result.deletedAt && typeof result.deletedAt.toDate === 'function') {
-      result.deletedAt = result.deletedAt.toDate().toISOString();
-    }
-    
-    return result;
-  };
-
-  // Listen for online/offline events
+  const TRASHED_NOTES_KEY = 'trashedNotes';
+  
+  // Handle online/offline status
   useEffect(() => {
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
+    const handleOnline = () => {
+      console.log('App is online');
+      setIsOffline(false);
+      syncLocalNotesToFirestore();
+    };
+    
+    const handleOffline = () => {
+      console.log('App is offline');
+      setIsOffline(true);
+    };
+    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
+    
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  // GUEST MODE FUNCTIONS
-
-  // Save guest notes to localStorage
-  const saveGuestNotes = (notesArray) => {
-    localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(notesArray));
+  
+  // Helper function to sanitize HTML content
+  const sanitizeHtml = (html) => {
+    // For now, we'll perform basic sanitization
+    if (!html) return '';
+    
+    // Basic sanitization to remove potentially harmful script tags
+    return html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
   };
-
-  // Save guest trash to localStorage
-  const saveGuestTrash = (trashArray) => {
-    localStorage.setItem(GUEST_TRASH_KEY, JSON.stringify(trashArray));
-  };
-
-  // Load notes from Firestore or localStorage (for guest mode)
+  
+  // Get all notes for the current user
   const refreshNotes = useCallback(async () => {
-    console.log("refreshNotes called - isGuestMode:", isGuestMode, "currentUser:", !!currentUser);
+    console.log("refreshNotes called, currentUser:", !!currentUser, "isGuestMode:", isGuestMode);
+    setLoading(true);
+    setError(null);
     
-    // If guest mode is active, load from localStorage
-    if (isGuestMode) {
-      console.log("Loading notes in guest mode");
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Load notes from localStorage
-        const storedNotes = localStorage.getItem(GUEST_NOTES_KEY);
-        const storedTrash = localStorage.getItem(GUEST_TRASH_KEY);
-        
-        if (storedNotes) {
-          const parsedNotes = JSON.parse(storedNotes);
-          console.log("Loaded guest notes:", parsedNotes);
-          setNotes(parsedNotes);
-        } else {
-          console.log("No guest notes found, initializing empty array");
-          setNotes([]);
-          saveGuestNotes([]);
-        }
-        
-        if (storedTrash) {
-          setTrashedNotes(JSON.parse(storedTrash));
-        } else {
-          setTrashedNotes([]);
-          saveGuestTrash([]);
-        }
-
-        return { success: true };
-      } catch (err) {
-        console.error('Error loading guest notes:', err);
-        setError('Failed to load notes');
-        return { success: false, error: err.message };
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    // Standard Firestore loading for authenticated users
-    if (!currentUser) {
-      setNotes([]);
-      setTrashedNotes([]);
-      setLoading(false);
-      return { success: false, error: 'User not authenticated' };
-    }
-
     try {
-      setLoading(true);
-      setError(null);
-      console.log("Loading notes for authenticated user:", currentUser.uid);
-
-      // Get regular notes
-      const q = query(
-        collection(db, 'notes'),
-        where('userId', '==', currentUser.uid),
-        where('deleted', '==', false),
-        orderBy('lastUpdated', 'desc')
-      );
-
-      const querySnapshot = await getDocs(q);
-      const fetchedNotes = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...convertTimestamps(data)
-        };
-      });
-      
-      console.log("Fetched notes for authenticated user:", fetchedNotes.length);
-      setNotes(fetchedNotes);
-
-      // Get trashed notes
-      const trashQuery = query(
-        collection(db, 'notes'),
-        where('userId', '==', currentUser.uid),
-        where('deleted', '==', true),
-        orderBy('lastUpdated', 'desc')
-      );
-
-      const trashQuerySnapshot = await getDocs(trashQuery);
-      const fetchedTrashedNotes = trashQuerySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...convertTimestamps(data)
-        };
-      });
-      
-      setTrashedNotes(fetchedTrashedNotes);
-
-      return { success: true };
+      // CASE 1: Logged in user - get notes from Firestore
+      if (currentUser) {
+        console.log("Getting notes for authenticated user:", currentUser.uid);
+        
+        try {
+          // First, try to get any local notes that need to be synced
+          const unsynced = getLocalNotes();
+          if (unsynced.length > 0) {
+            console.log(`Found ${unsynced.length} local notes to sync`);
+            await syncLocalNotesToFirestore();
+          }
+          
+          // Then fetch from Firestore
+          const q = query(
+            collection(db, 'notes'),
+            where('userId', '==', currentUser.uid),
+            where('deleted', '==', false)
+          );
+          
+          const notesSnapshot = await getDocs(q);
+          const notesList = notesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            content: sanitizeHtml(doc.data().content),
+            lastUpdated: doc.data().lastUpdated?.toDate().toISOString() || new Date().toISOString()
+          }));
+          
+          console.log(`Fetched ${notesList.length} notes from Firestore`);
+          setNotes(notesList);
+          
+          // Get trashed notes
+          const trashedQuery = query(
+            collection(db, 'notes'),
+            where('userId', '==', currentUser.uid),
+            where('deleted', '==', true)
+          );
+          
+          const trashedSnapshot = await getDocs(trashedQuery);
+          const trashedList = trashedSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            content: sanitizeHtml(doc.data().content),
+            lastUpdated: doc.data().lastUpdated?.toDate().toISOString() || new Date().toISOString(),
+            deletedAt: doc.data().deletedAt?.toDate().toISOString() || new Date().toISOString()
+          }));
+          
+          setTrashedNotes(trashedList);
+        } catch (err) {
+          console.error("Error fetching from Firestore:", err);
+          
+          // Fall back to cached notes if online fetch fails
+          const cachedNotes = getLocalNotes();
+          if (cachedNotes.length > 0) {
+            console.log("Falling back to cached notes");
+            setNotes(cachedNotes);
+          } else {
+            setError('Failed to load notes. Please check your connection.');
+          }
+        }
+      } 
+      // CASE 2: Guest mode - get notes from localStorage
+      else if (isGuestMode) {
+        console.log("Getting notes for guest user");
+        
+        try {
+          // Get guest notes from localStorage
+          const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+          
+          // Get guest trashed notes
+          const guestTrashed = JSON.parse(localStorage.getItem(`${GUEST_NOTES_KEY}-trash`) || '[]');
+          
+          console.log(`Found ${guestNotes.length} guest notes and ${guestTrashed.length} guest trashed notes`);
+          
+          // Process content for each note
+          const processedNotes = guestNotes.map(note => ({
+            ...note,
+            content: sanitizeHtml(note.content)
+          }));
+          
+          const processedTrashed = guestTrashed.map(note => ({
+            ...note,
+            content: sanitizeHtml(note.content)
+          }));
+          
+          setNotes(processedNotes);
+          setTrashedNotes(processedTrashed);
+        } catch (err) {
+          console.error("Error fetching guest notes:", err);
+          setError('Failed to load guest notes.');
+        }
+      }
+      // CASE 3: Not logged in and not in guest mode - no notes
+      else {
+        console.log("No user and not in guest mode, clearing notes");
+        setNotes([]);
+        setTrashedNotes([]);
+      }
     } catch (err) {
-      console.error('Error fetching notes:', err);
-      setError('Failed to load notes. Please try again.');
-      return { success: false, error: err.message };
+      console.error("Error in refreshNotes:", err);
+      setError('Failed to load notes. Please try again later.');
     } finally {
       setLoading(false);
     }
   }, [currentUser, isGuestMode]);
-
-  // Load notes on startup and when auth state or guest mode changes
+  
+  // Load notes when user changes or on mount
   useEffect(() => {
     refreshNotes();
   }, [refreshNotes, currentUser, isGuestMode]);
-
-  // Get a specific note by ID
-  const getNote = async (noteId) => {
-    console.log("getNote called - noteId:", noteId, "isGuestMode:", isGuestMode);
-    
-    // Handle invalid noteId
-    if (!noteId) {
-      console.log("Invalid noteId provided:", noteId);
-      return { success: false, error: 'Invalid note ID' };
-    }
-    
-    // Handle 'new' note ID special case
-    if (noteId === 'new') {
-      console.log("Special case: returning empty 'new' note template");
-      return { 
-        success: true, 
-        data: { 
-          id: 'new', 
-          title: '', 
-          content: '',
-          isNew: true // Flag to indicate this is a new note
-        } 
-      };
-    }
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Getting note in guest mode:", noteId);
-      // Find note in guest notes or trash
-      const note = notes.find(n => n.id === noteId) || trashedNotes.find(n => n.id === noteId);
-      
-      if (note) {
-        console.log("Found guest note:", note);
-        return { success: true, data: note };
-      } else {
-        console.log("Guest note not found");
-        return { success: false, error: 'Note not found' };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    try {
-      console.log("Getting note for authenticated user:", noteId);
-      // Safety check for invalid IDs
-      if (typeof noteId !== 'string' || noteId.trim() === '') {
-        return { success: false, error: 'Invalid note ID' };
-      }
-      
-      const noteRef = doc(db, 'notes', noteId);
-      const noteSnapshot = await getDoc(noteRef);
-
-      if (noteSnapshot.exists()) {
-        const noteData = noteSnapshot.data();
-        
-        // Check if this note belongs to the current user
-        if (noteData.userId !== currentUser.uid) {
-          console.log("Note doesn't belong to current user");
-          return { success: false, error: 'Note not found' };
-        }
-        
-        console.log("Found note for authenticated user");
-        return { 
-          success: true, 
-          data: { 
-            id: noteSnapshot.id, 
-            ...convertTimestamps(noteData) 
-          }
-        };
-      } else {
-        console.log("Note not found in Firestore");
-        return { success: false, error: 'Note not found' };
-      }
-    } catch (err) {
-      console.error('Error getting note:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
+  
   // Create a new note
   const createNote = async (noteData) => {
-    console.log("createNote called with data:", noteData, "isGuestMode:", isGuestMode);
+    console.log("createNote called with:", noteData);
+    setError(null);
     
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Creating note in guest mode");
-      try {
-        const newNote = {
-          id: `guest-${uuidv4()}`,
-          title: noteData.title || '',
-          content: noteData.content || '',
-          created: new Date().toISOString(),
-          lastUpdated: new Date().toISOString(),
-          deleted: false,
-          deletedAt: null
-        };
-        
-        console.log("Created new guest note:", newNote);
-        const updatedNotes = [newNote, ...notes];
-        setNotes(updatedNotes);
-        saveGuestNotes(updatedNotes);
-        
-        return { success: true, id: newNote.id };
-      } catch (err) {
-        console.error('Error creating guest note:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
     try {
-      console.log("Creating note for authenticated user");
+      // Ensure note has title and content
       const newNote = {
         title: noteData.title || '',
-        content: noteData.content || '',
-        userId: currentUser.uid,
-        created: serverTimestamp(),
-        lastUpdated: serverTimestamp(),
+        content: sanitizeHtml(noteData.content) || '',
+        lastUpdated: new Date().toISOString(),
         deleted: false,
         deletedAt: null
       };
-
-      const docRef = await addDoc(collection(db, 'notes'), newNote);
-      console.log("Created note in Firestore with ID:", docRef.id);
       
-      // Add new note to local state
-      const noteWithId = {
-        id: docRef.id,
-        ...newNote,
-        created: new Date().toISOString(), // Use client timestamp for immediate display
+      // CASE 1: User is authenticated and online - save to Firestore
+      if (currentUser && !isOffline) {
+        console.log("Creating note directly in Firestore");
+        
+        try {
+          const notesRef = collection(db, 'notes');
+          const firestoreNote = {
+            ...newNote,
+            userId: currentUser.uid,
+            created: serverTimestamp(),
+            lastUpdated: serverTimestamp()
+          };
+          
+          const docRef = await addDoc(notesRef, firestoreNote);
+          console.log("Note created in Firestore with ID:", docRef.id);
+          
+          // Add new note to state
+          const createdNote = {
+            id: docRef.id,
+            ...newNote,
+            userId: currentUser.uid,
+            created: new Date().toISOString()
+          };
+          
+          setNotes(prevNotes => [...prevNotes, createdNote]);
+          
+          return { success: true, id: docRef.id };
+        } catch (err) {
+          console.error("Error creating note in Firestore:", err);
+          
+          // Fall back to local storage if Firestore fails
+          return saveNoteLocally(newNote);
+        }
+      }
+      // CASE 2: User is authenticated but offline - save locally for later sync
+      else if (currentUser && isOffline) {
+        console.log("Creating note locally (offline mode)");
+        return saveNoteLocally(newNote);
+      }
+      // CASE 3: Guest mode - save to localStorage
+      else if (isGuestMode) {
+        console.log("Creating note in guest mode");
+        
+        try {
+          const guestId = `guest-${uuidv4()}`;
+          const guestNote = {
+            id: guestId,
+            ...newNote,
+            created: new Date().toISOString()
+          };
+          
+          // Get existing guest notes
+          const existingNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+          
+          // Add new note
+          const updatedNotes = [...existingNotes, guestNote];
+          localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(updatedNotes));
+          
+          // Update state
+          setNotes(prevNotes => [...prevNotes, guestNote]);
+          
+          return { success: true, id: guestId };
+        } catch (err) {
+          console.error("Error creating guest note:", err);
+          throw new Error('Failed to create note in guest mode.');
+        }
+      }
+      // CASE 4: No user and not in guest mode - can't create note
+      else {
+        console.error("Cannot create note - user not authenticated and not in guest mode");
+        throw new Error('You must be logged in to create notes.');
+      }
+    } catch (err) {
+      console.error("Error in createNote:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Save note locally for offline use or syncing later
+  const saveNoteLocally = (noteData) => {
+    console.log("Saving note locally:", noteData);
+    
+    try {
+      // Generate a temporary ID
+      const tempId = `local-${uuidv4()}`;
+      
+      // Create the note with the temporary ID
+      const localNote = {
+        id: tempId,
+        ...noteData,
+        userId: currentUser?.uid,
+        created: new Date().toISOString(),
+        needsSync: true
+      };
+      
+      // Get existing local notes
+      const existingNotes = JSON.parse(localStorage.getItem(LOCAL_NOTES_KEY) || '[]');
+      
+      // Add the new note
+      const updatedNotes = [...existingNotes, localNote];
+      localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(updatedNotes));
+      
+      // Update state
+      setNotes(prevNotes => [...prevNotes, localNote]);
+      
+      return { success: true, id: tempId };
+    } catch (err) {
+      console.error("Error saving note locally:", err);
+      return { success: false, error: 'Failed to save note locally.' };
+    }
+  };
+  
+  // Get local notes (offline-created or unsynced)
+  const getLocalNotes = () => {
+    try {
+      const localNotes = JSON.parse(localStorage.getItem(LOCAL_NOTES_KEY) || '[]');
+      console.log(`Retrieved ${localNotes.length} local notes`);
+      return localNotes;
+    } catch (err) {
+      console.error("Error getting local notes:", err);
+      return [];
+    }
+  };
+  
+  // Sync local notes to Firestore once back online
+  const syncLocalNotesToFirestore = async () => {
+    console.log("Syncing local notes to Firestore");
+    
+    // Only attempt sync if online and authenticated
+    if (isOffline || !currentUser) {
+      console.log("Cannot sync - offline or not authenticated");
+      return;
+    }
+    
+    try {
+      const localNotes = getLocalNotes();
+      
+      if (localNotes.length === 0) {
+        console.log("No local notes to sync");
+        return;
+      }
+      
+      console.log(`Found ${localNotes.length} local notes to sync`);
+      
+      // Keep track of successful syncs
+      const syncedNotes = [];
+      
+      for (const note of localNotes) {
+        try {
+          // Add note to Firestore
+          const notesRef = collection(db, 'notes');
+          const firestoreNote = {
+            title: note.title,
+            content: note.content,
+            userId: currentUser.uid,
+            created: Timestamp.fromDate(new Date(note.created)),
+            lastUpdated: serverTimestamp(),
+            deleted: note.deleted || false,
+            deletedAt: note.deletedAt ? Timestamp.fromDate(new Date(note.deletedAt)) : null
+          };
+          
+          const docRef = await addDoc(notesRef, firestoreNote);
+          console.log(`Synced local note to Firestore with ID: ${docRef.id}`);
+          
+          // Add to synced list
+          syncedNotes.push({
+            localId: note.id,
+            firestoreId: docRef.id
+          });
+        } catch (err) {
+          console.error(`Error syncing note ${note.id}:`, err);
+        }
+      }
+      
+      console.log(`Successfully synced ${syncedNotes.length} out of ${localNotes.length} notes`);
+      
+      // If we synced any notes, update localStorage
+      if (syncedNotes.length > 0) {
+        // Remove synced notes from local storage
+        const remainingNotes = localNotes.filter(note => 
+          !syncedNotes.some(synced => synced.localId === note.id)
+        );
+        
+        localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(remainingNotes));
+        
+        // Refresh notes to get the latest from Firestore
+        await refreshNotes();
+      }
+    } catch (err) {
+      console.error("Error during sync process:", err);
+    }
+  };
+  
+  // Get a specific note
+  const getNote = async (noteId) => {
+    console.log(`getNote called for ID: ${noteId}`);
+    setError(null);
+    
+    try {
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log("Getting guest note");
+        
+        try {
+          // Get all guest notes
+          const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+          
+          // Find the specific note
+          const note = guestNotes.find(note => note.id === noteId);
+          
+          if (note) {
+            return { 
+              success: true, 
+              data: {
+                ...note,
+                content: sanitizeHtml(note.content)
+              } 
+            };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error getting guest note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: It's a local note (offline-created)
+      else if (noteId.startsWith('local-')) {
+        console.log("Getting local note");
+        
+        try {
+          // Get all local notes
+          const localNotes = getLocalNotes();
+          
+          // Find the specific note
+          const note = localNotes.find(note => note.id === noteId);
+          
+          if (note) {
+            return { 
+              success: true, 
+              data: {
+                ...note,
+                content: sanitizeHtml(note.content)
+              } 
+            };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error getting local note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 3: It's a Firestore note
+      else {
+        console.log(`Getting Firestore note: ${noteId}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot get Firestore note - not authenticated");
+          return { success: false, error: 'You must be logged in to access this note.' };
+        }
+        
+        try {
+          // Get the note from Firestore
+          const noteRef = doc(db, 'notes', noteId);
+          const noteSnapshot = await getDoc(noteRef);
+          
+          if (noteSnapshot.exists()) {
+            // Check if the note belongs to the current user
+            const noteData = noteSnapshot.data();
+            
+            if (noteData.userId !== currentUser.uid) {
+              console.error("Note does not belong to current user");
+              return { success: false, error: 'You do not have permission to access this note.' };
+            }
+            
+            return { 
+              success: true, 
+              data: {
+                id: noteSnapshot.id,
+                ...noteData,
+                content: sanitizeHtml(noteData.content),
+                lastUpdated: noteData.lastUpdated?.toDate().toISOString() || new Date().toISOString(),
+                created: noteData.created?.toDate().toISOString() || new Date().toISOString()
+              } 
+            };
+          } else {
+            console.log(`Note ${noteId} not found`);
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error getting Firestore note:", err);
+          
+          // Check if there's a cached version in state
+          const cachedNote = notes.find(note => note.id === noteId);
+          
+          if (cachedNote) {
+            console.log("Using cached note due to Firestore error");
+            return { success: true, data: cachedNote };
+          }
+          
+          return { success: false, error: 'Failed to load note. Please try again later.' };
+        }
+      }
+    } catch (err) {
+      console.error("Error in getNote:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Update a note
+  const updateNote = async (noteId, noteData) => {
+    console.log(`updateNote called for ID: ${noteId} with data:`, noteData);
+    setError(null);
+    
+    try {
+      // Process the note data
+      const updatedNote = {
+        ...noteData,
+        content: sanitizeHtml(noteData.content),
         lastUpdated: new Date().toISOString()
       };
       
-      setNotes(prevNotes => [noteWithId, ...prevNotes]);
-      
-      return { success: true, id: docRef.id };
-    } catch (err) {
-      console.error('Error creating note:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Update an existing note
-  const updateNote = async (noteId, noteData) => {
-    console.log("updateNote called - noteId:", noteId, "isGuestMode:", isGuestMode);
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Updating note in guest mode:", noteId);
-      try {
-        const updatedNotes = notes.map(note => 
-          note.id === noteId 
-            ? { 
-                ...note, 
-                title: noteData.title, 
-                content: noteData.content,
-                lastUpdated: new Date().toISOString()
-              } 
-            : note
-        );
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log("Updating guest note");
         
-        setNotes(updatedNotes);
-        saveGuestNotes(updatedNotes);
-        console.log("Updated guest note successfully");
-        
-        return { success: true };
-      } catch (err) {
-        console.error('Error updating guest note:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    try {
-      console.log("Updating note for authenticated user:", noteId);
-      const noteRef = doc(db, 'notes', noteId);
-      
-      const updates = {
-        title: noteData.title,
-        content: noteData.content,
-        lastUpdated: serverTimestamp()
-      };
-      
-      await updateDoc(noteRef, updates);
-      console.log("Updated note in Firestore successfully");
-      
-      // Update local state
-      setNotes(prevNotes => 
-        prevNotes.map(note => 
-          note.id === noteId 
-            ? { 
-                ...note, 
-                ...updates, 
-                lastUpdated: new Date().toISOString() // Use client timestamp for immediate display
-              } 
-            : note
-        )
-      );
-      
-      return { success: true };
-    } catch (err) {
-      console.error('Error updating note:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Move note to trash (soft delete)
-  const moveToTrash = async (noteId) => {
-    console.log("moveToTrash called - noteId:", noteId, "isGuestMode:", isGuestMode);
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Moving note to trash in guest mode:", noteId);
-      try {
-        // Find the note to move
-        const noteToMove = notes.find(note => note.id === noteId);
-        if (!noteToMove) {
-          console.log("Note not found in guest notes");
-          return { success: false, error: 'Note not found' };
-        }
-        
-        // Remove from notes
-        const updatedNotes = notes.filter(note => note.id !== noteId);
-        setNotes(updatedNotes);
-        saveGuestNotes(updatedNotes);
-        
-        // Add to trash
-        const trashedNote = {
-          ...noteToMove,
-          deleted: true,
-          deletedAt: new Date().toISOString()
-        };
-        
-        const updatedTrash = [trashedNote, ...trashedNotes];
-        setTrashedNotes(updatedTrash);
-        saveGuestTrash(updatedTrash);
-        console.log("Moved guest note to trash successfully");
-        
-        return { success: true };
-      } catch (err) {
-        console.error('Error moving guest note to trash:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    try {
-      console.log("Moving note to trash for authenticated user:", noteId);
-      const noteRef = doc(db, 'notes', noteId);
-      
-      // Mark as deleted instead of actually deleting
-      await updateDoc(noteRef, {
-        deleted: true,
-        deletedAt: serverTimestamp()
-      });
-      
-      // Get the note being deleted
-      const noteToMove = notes.find(note => note.id === noteId);
-      
-      // Update local states
-      setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
-      
-      if (noteToMove) {
-        const trashedNote = {
-          ...noteToMove,
-          deleted: true,
-          deletedAt: new Date().toISOString()
-        };
-        setTrashedNotes(prevTrashed => [trashedNote, ...prevTrashed]);
-      }
-      
-      console.log("Moved note to trash successfully");
-      return { success: true };
-    } catch (err) {
-      console.error('Error moving note to trash:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Restore note from trash
-  const restoreFromTrash = async (noteId) => {
-    console.log("restoreFromTrash called - noteId:", noteId, "isGuestMode:", isGuestMode);
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Restoring note from trash in guest mode:", noteId);
-      try {
-        // Find the note to restore
-        const noteToRestore = trashedNotes.find(note => note.id === noteId);
-        if (!noteToRestore) {
-          console.log("Note not found in guest trash");
-          return { success: false, error: 'Note not found in trash' };
-        }
-        
-        // Remove from trash
-        const updatedTrash = trashedNotes.filter(note => note.id !== noteId);
-        setTrashedNotes(updatedTrash);
-        saveGuestTrash(updatedTrash);
-        
-        // Add back to notes
-        const restoredNote = {
-          ...noteToRestore,
-          deleted: false,
-          deletedAt: null,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        const updatedNotes = [restoredNote, ...notes];
-        setNotes(updatedNotes);
-        saveGuestNotes(updatedNotes);
-        console.log("Restored guest note from trash successfully");
-        
-        return { success: true };
-      } catch (err) {
-        console.error('Error restoring guest note from trash:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    try {
-      console.log("Restoring note from trash for authenticated user:", noteId);
-      const noteRef = doc(db, 'notes', noteId);
-      
-      // Mark as not deleted
-      await updateDoc(noteRef, {
-        deleted: false,
-        deletedAt: null,
-        lastUpdated: serverTimestamp()
-      });
-      
-      // Get the note being restored
-      const noteToRestore = trashedNotes.find(note => note.id === noteId);
-      
-      // Update local states
-      setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
-      
-      if (noteToRestore) {
-        const restoredNote = {
-          ...noteToRestore,
-          deleted: false,
-          deletedAt: null,
-          lastUpdated: new Date().toISOString()
-        };
-        setNotes(prevNotes => [restoredNote, ...prevNotes]);
-      }
-      
-      console.log("Restored note from trash successfully");
-      return { success: true };
-    } catch (err) {
-      console.error('Error restoring note from trash:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Permanently delete a note
-  const permanentlyDeleteNote = async (noteId) => {
-    console.log("permanentlyDeleteNote called - noteId:", noteId, "isGuestMode:", isGuestMode);
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Permanently deleting note in guest mode:", noteId);
-      try {
-        // Remove from trash
-        const updatedTrash = trashedNotes.filter(note => note.id !== noteId);
-        setTrashedNotes(updatedTrash);
-        saveGuestTrash(updatedTrash);
-        console.log("Permanently deleted guest note successfully");
-        
-        return { success: true };
-      } catch (err) {
-        console.error('Error permanently deleting guest note:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser) {
-      return { success: false, error: 'User not authenticated' };
-    }
-
-    try {
-      console.log("Permanently deleting note for authenticated user:", noteId);
-      const noteRef = doc(db, 'notes', noteId);
-      
-      // Permanently delete the document
-      await deleteDoc(noteRef);
-      
-      // Update local state
-      setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
-      console.log("Permanently deleted note successfully");
-      
-      return { success: true };
-    } catch (err) {
-      console.error('Error permanently deleting note:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Empty the entire trash
-  const emptyTrash = async () => {
-    console.log("emptyTrash called - isGuestMode:", isGuestMode);
-    
-    // Guest mode handling
-    if (isGuestMode) {
-      console.log("Emptying trash in guest mode");
-      try {
-        setTrashedNotes([]);
-        saveGuestTrash([]);
-        console.log("Emptied guest trash successfully");
-        
-        return { success: true };
-      } catch (err) {
-        console.error('Error emptying guest trash:', err);
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // Standard authenticated flow
-    if (!currentUser || trashedNotes.length === 0) {
-      return { success: trashedNotes.length === 0, error: !currentUser ? 'User not authenticated' : null };
-    }
-
-    try {
-      console.log("Emptying trash for authenticated user");
-      // Delete all trashed notes
-      const deletePromises = trashedNotes.map(note => 
-        deleteDoc(doc(db, 'notes', note.id))
-      );
-      
-      await Promise.all(deletePromises);
-      
-      // Clear local trash state
-      setTrashedNotes([]);
-      console.log("Emptied trash successfully");
-      
-      return { success: true };
-    } catch (err) {
-      console.error('Error emptying trash:', err);
-      return { success: false, error: err.message };
-    }
-  };
-
-  // Legacy delete note function - now forwards to moveToTrash
-  const deleteNote = async (noteId) => {
-    return moveToTrash(noteId);
-  };
-
-  // Transfer guest notes to user account
-  const transferGuestNotesToUser = async () => {
-    console.log("transferGuestNotesToUser called - isGuestMode:", isGuestMode, "currentUser:", !!currentUser, "notes count:", notes.length);
-    
-    try {
-      // Safety check - this is critical!
-      if (!currentUser) {
-        console.log("Cannot transfer notes: No authenticated user found in context");
-        return { success: false, error: 'Cannot transfer notes: User not authenticated' };
-      }
-
-      if (!isGuestMode) {
-        console.log("Not in guest mode, no notes to transfer");
-        return { success: true, message: 'Not in guest mode, no notes to transfer' };
-      }
-
-      // Get fresh copy of guest notes directly from localStorage
-      const storedNotes = localStorage.getItem(GUEST_NOTES_KEY);
-      if (!storedNotes) {
-        console.log("No guest notes found in localStorage");
-        return { success: true, count: 0, total: 0, message: 'No guest notes found' };
-      }
-      
-      const guestNotes = JSON.parse(storedNotes);
-      if (guestNotes.length === 0) {
-        console.log("No guest notes to transfer (empty array)");
-        return { success: true, count: 0, total: 0, message: 'No guest notes to transfer' };
-      }
-
-      console.log(`Starting to transfer ${guestNotes.length} guest notes to user account:`, currentUser.uid);
-      let transferredCount = 0;
-      const transferErrors = [];
-      
-      // Create each guest note in Firestore
-      for (const note of guestNotes) {
         try {
-          console.log(`Transferring note: ${note.id}`);
+          // Get all guest notes
+          const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
           
-          const newNote = {
-            title: note.title || '',
-            content: note.content || '',
-            userId: currentUser.uid,
-            created: serverTimestamp(),
-            lastUpdated: serverTimestamp(),
-            deleted: false,
-            deletedAt: null
-          };
+          // Find the note index
+          const noteIndex = guestNotes.findIndex(note => note.id === noteId);
           
-          const docRef = await addDoc(collection(db, 'notes'), newNote);
-          console.log(`Successfully transferred note to ID: ${docRef.id}`);
-          transferredCount++;
+          if (noteIndex !== -1) {
+            // Update the note
+            guestNotes[noteIndex] = {
+              ...guestNotes[noteIndex],
+              ...updatedNote,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            // Save back to localStorage
+            localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(guestNotes));
+            
+            // Update state
+            setNotes(prevNotes => {
+              const newNotes = [...prevNotes];
+              const stateNoteIndex = newNotes.findIndex(note => note.id === noteId);
+              
+              if (stateNoteIndex !== -1) {
+                newNotes[stateNoteIndex] = {
+                  ...newNotes[stateNoteIndex],
+                  ...updatedNote,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return newNotes;
+            });
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
         } catch (err) {
-          console.error(`Error transferring note ${note.id}:`, err);
-          transferErrors.push({ noteId: note.id, error: err.message });
+          console.error("Error updating guest note:", err);
+          return { success: false, error: err.message };
         }
       }
-      
-      // Clear guest notes after successful transfer to prevent duplicates
-      if (transferredCount > 0) {
-        console.log("Clearing guest notes from localStorage after transfer");
-        localStorage.removeItem(GUEST_NOTES_KEY);
-        setNotes([]); // Clear notes array in state
+      // CASE 2: It's a local note (offline-created)
+      else if (noteId.startsWith('local-')) {
+        console.log("Updating local note");
+        
+        try {
+          // Get all local notes
+          const localNotes = getLocalNotes();
+          
+          // Find the note index
+          const noteIndex = localNotes.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Update the note
+            localNotes[noteIndex] = {
+              ...localNotes[noteIndex],
+              ...updatedNote,
+              lastUpdated: new Date().toISOString(),
+              needsSync: true
+            };
+            
+            // Save back to localStorage
+            localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(localNotes));
+            
+            // Update state
+            setNotes(prevNotes => {
+              const newNotes = [...prevNotes];
+              const stateNoteIndex = newNotes.findIndex(note => note.id === noteId);
+              
+              if (stateNoteIndex !== -1) {
+                newNotes[stateNoteIndex] = {
+                  ...newNotes[stateNoteIndex],
+                  ...updatedNote,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return newNotes;
+            });
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error updating local note:", err);
+          return { success: false, error: err.message };
+        }
       }
-      
-      // Refresh notes after transfer to get the newly created notes
-      await refreshNotes();
-      
-      return { 
-        success: true, 
-        count: transferredCount,
-        total: guestNotes.length,
-        errors: transferErrors.length > 0 ? transferErrors : undefined,
-        message: `Successfully transferred ${transferredCount} out of ${guestNotes.length} notes.`
-      };
+      // CASE 3: It's a Firestore note
+      else {
+        console.log(`Updating Firestore note: ${noteId}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot update Firestore note - not authenticated");
+          return { success: false, error: 'You must be logged in to update this note.' };
+        }
+        
+        try {
+          // Update the note in Firestore
+          const noteRef = doc(db, 'notes', noteId);
+          
+          await updateDoc(noteRef, {
+            title: updatedNote.title,
+            content: updatedNote.content,
+            lastUpdated: serverTimestamp()
+          });
+          
+          console.log(`Updated Firestore note: ${noteId}`);
+          
+          // Update state
+          setNotes(prevNotes => {
+            const newNotes = [...prevNotes];
+            const noteIndex = newNotes.findIndex(note => note.id === noteId);
+            
+            if (noteIndex !== -1) {
+              newNotes[noteIndex] = {
+                ...newNotes[noteIndex],
+                ...updatedNote,
+                lastUpdated: new Date().toISOString()
+              };
+            }
+            
+            return newNotes;
+          });
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error updating Firestore note:", err);
+          
+          // If offline, save locally for later sync
+          if (isOffline) {
+            console.log("Offline - saving note locally for later sync");
+            
+            try {
+              // Get current local notes
+              const localNotes = getLocalNotes();
+              
+              // Check if this note is already saved locally
+              const existingIndex = localNotes.findIndex(note => note.id === noteId);
+              
+              if (existingIndex !== -1) {
+                // Update existing local copy
+                localNotes[existingIndex] = {
+                  ...localNotes[existingIndex],
+                  ...updatedNote,
+                  lastUpdated: new Date().toISOString(),
+                  needsSync: true
+                };
+              } else {
+                // Add new local copy
+                localNotes.push({
+                  id: noteId,
+                  ...updatedNote,
+                  userId: currentUser.uid,
+                  lastUpdated: new Date().toISOString(),
+                  needsSync: true
+                });
+              }
+              
+              // Save back to localStorage
+              localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(localNotes));
+              
+              // Update state
+              setNotes(prevNotes => {
+                const newNotes = [...prevNotes];
+                const noteIndex = newNotes.findIndex(note => note.id === noteId);
+                
+                if (noteIndex !== -1) {
+                  newNotes[noteIndex] = {
+                    ...newNotes[noteIndex],
+                    ...updatedNote,
+                    lastUpdated: new Date().toISOString()
+                  };
+                }
+                
+                return newNotes;
+              });
+              
+              return { success: true };
+            } catch (localErr) {
+              console.error("Error saving note locally:", localErr);
+              return { success: false, error: 'Failed to save note changes locally.' };
+            }
+          }
+          
+          return { success: false, error: 'Failed to update note. Please try again later.' };
+        }
+      }
     } catch (err) {
-      console.error('Error transferring guest notes:', err);
+      console.error("Error in updateNote:", err);
       return { success: false, error: err.message };
     }
   };
-
-  // Get merge options for note transfer
+  
+  // Move a note to trash
+  const moveToTrash = async (noteId) => {
+    console.log(`moveToTrash called for ID: ${noteId}`);
+    setError(null);
+    
+    try {
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log("Moving guest note to trash");
+        
+        try {
+          // Get all guest notes
+          const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+          
+          // Find the note index
+          const noteIndex = guestNotes.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Get the note to delete
+            const noteToTrash = guestNotes[noteIndex];
+            
+            // Remove from notes array
+            guestNotes.splice(noteIndex, 1);
+            
+            // Save back to localStorage
+            localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(guestNotes));
+            
+            // Add to trash
+            const trashed = JSON.parse(localStorage.getItem(`${GUEST_NOTES_KEY}-trash`) || '[]');
+            trashed.push({
+              ...noteToTrash,
+              deleted: true,
+              deletedAt: new Date().toISOString()
+            });
+            
+            localStorage.setItem(`${GUEST_NOTES_KEY}-trash`, JSON.stringify(trashed));
+            
+            // Update state
+            setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+            setTrashedNotes(prevTrashed => [
+              ...prevTrashed, 
+              {
+                ...noteToTrash,
+                deleted: true,
+                deletedAt: new Date().toISOString()
+              }
+            ]);
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error moving guest note to trash:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: It's a local note
+      else if (noteId.startsWith('local-')) {
+        console.log("Moving local note to trash");
+        
+        try {
+          // Get all local notes
+          const localNotes = getLocalNotes();
+          
+          // Find the note index
+          const noteIndex = localNotes.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Remove from local notes
+            const noteToTrash = localNotes[noteIndex];
+            localNotes.splice(noteIndex, 1);
+            
+            // Save back to localStorage
+            localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(localNotes));
+            
+            // Add to trashed notes
+            const trashed = JSON.parse(localStorage.getItem(`${LOCAL_NOTES_KEY}-trash`) || '[]');
+            trashed.push({
+              ...noteToTrash,
+              deleted: true,
+              deletedAt: new Date().toISOString()
+            });
+            
+            localStorage.setItem(`${LOCAL_NOTES_KEY}-trash`, JSON.stringify(trashed));
+            
+            // Update state
+            setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+            setTrashedNotes(prevTrashed => [
+              ...prevTrashed,
+              {
+                ...noteToTrash,
+                deleted: true,
+                deletedAt: new Date().toISOString()
+              }
+            ]);
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error moving local note to trash:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 3: It's a Firestore note
+      else {
+        console.log(`Moving Firestore note to trash: ${noteId}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot move Firestore note to trash - not authenticated");
+          return { success: false, error: 'You must be logged in to delete this note.' };
+        }
+        
+        try {
+          // Update the note in Firestore
+          const noteRef = doc(db, 'notes', noteId);
+          
+          await updateDoc(noteRef, {
+            deleted: true,
+            deletedAt: serverTimestamp()
+          });
+          
+          console.log(`Moved Firestore note to trash: ${noteId}`);
+          
+          // Find the note in state
+          const noteToTrash = notes.find(note => note.id === noteId);
+          
+          // Update state
+          setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+          
+          if (noteToTrash) {
+            setTrashedNotes(prevTrashed => [
+              ...prevTrashed,
+              {
+                ...noteToTrash,
+                deleted: true,
+                deletedAt: new Date().toISOString()
+              }
+            ]);
+          }
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error moving Firestore note to trash:", err);
+          
+          // If offline, handle locally
+          if (isOffline) {
+            console.log("Offline - marking note for deletion when online");
+            
+            try {
+              // Get current notes
+              const noteToDelte = notes.find(note => note.id === noteId);
+              
+              if (noteToDelte) {
+                // Add to pending deletions
+                const pendingDeletions = JSON.parse(localStorage.getItem('pendingDeletions') || '[]');
+                pendingDeletions.push(noteId);
+                localStorage.setItem('pendingDeletions', JSON.stringify(pendingDeletions));
+                
+                // Update state to reflect deletion
+                setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
+                setTrashedNotes(prevTrashed => [
+                  ...prevTrashed,
+                  {
+                    ...noteToDelte,
+                    deleted: true,
+                    deletedAt: new Date().toISOString()
+                  }
+                ]);
+                
+                return { success: true };
+              } else {
+                return { success: false, error: 'Note not found in current state' };
+              }
+            } catch (localErr) {
+              console.error("Error in local deletion process:", localErr);
+              return { success: false, error: 'Failed to mark note for deletion.' };
+            }
+          }
+          
+          return { success: false, error: 'Failed to move note to trash. Please try again later.' };
+        }
+      }
+    } catch (err) {
+      console.error("Error in moveToTrash:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Restore a note from trash
+  const restoreFromTrash = async (noteId) => {
+    console.log(`restoreFromTrash called for ID: ${noteId}`);
+    setError(null);
+    
+    try {
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log("Restoring guest note from trash");
+        
+        try {
+          // Get trashed guest notes
+          const trashedGuest = JSON.parse(localStorage.getItem(`${GUEST_NOTES_KEY}-trash`) || '[]');
+          
+          // Find the note index
+          const noteIndex = trashedGuest.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Get the note to restore
+            const noteToRestore = trashedGuest[noteIndex];
+            
+            // Remove from trash
+            trashedGuest.splice(noteIndex, 1);
+            localStorage.setItem(`${GUEST_NOTES_KEY}-trash`, JSON.stringify(trashedGuest));
+            
+            // Add back to notes
+            const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+            guestNotes.push({
+              ...noteToRestore,
+              deleted: false,
+              deletedAt: null,
+              lastUpdated: new Date().toISOString()
+            });
+            
+            localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(guestNotes));
+            
+            // Update state
+            setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+            setNotes(prevNotes => [
+              ...prevNotes,
+              {
+                ...noteToRestore,
+                deleted: false,
+                deletedAt: null,
+                lastUpdated: new Date().toISOString()
+              }
+            ]);
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found in trash' };
+          }
+        } catch (err) {
+          console.error("Error restoring guest note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: It's a Firestore note
+      else {
+        console.log(`Restoring Firestore note from trash: ${noteId}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot restore Firestore note - not authenticated");
+          return { success: false, error: 'You must be logged in to restore this note.' };
+        }
+        
+        try {
+          // Update the note in Firestore
+          const noteRef = doc(db, 'notes', noteId);
+          
+          await updateDoc(noteRef, {
+            deleted: false,
+            deletedAt: null,
+            lastUpdated: serverTimestamp()
+          });
+          
+          console.log(`Restored Firestore note: ${noteId}`);
+          
+          // Find the note in trashed notes
+          const noteToRestore = trashedNotes.find(note => note.id === noteId);
+          
+          // Update state
+          setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+          
+          if (noteToRestore) {
+            setNotes(prevNotes => [
+              ...prevNotes,
+              {
+                ...noteToRestore,
+                deleted: false,
+                deletedAt: null,
+                lastUpdated: new Date().toISOString()
+              }
+            ]);
+          }
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error restoring Firestore note:", err);
+          return { success: false, error: 'Failed to restore note. Please try again later.' };
+        }
+      }
+    } catch (err) {
+      console.error("Error in restoreFromTrash:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Permanently delete a note
+  const deleteNotePermanently = async (noteId) => {
+    console.log(`deleteNotePermanently called for ID: ${noteId}`);
+    setError(null);
+    
+    try {
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log("Permanently deleting guest note");
+        
+        try {
+          // Get trashed guest notes
+          const trashedGuest = JSON.parse(localStorage.getItem(`${GUEST_NOTES_KEY}-trash`) || '[]');
+          
+          // Filter out the note
+          const updatedTrash = trashedGuest.filter(note => note.id !== noteId);
+          
+          // Save back to localStorage
+          localStorage.setItem(`${GUEST_NOTES_KEY}-trash`, JSON.stringify(updatedTrash));
+          
+          // Update state
+          setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error permanently deleting guest note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: It's a Firestore note
+      else {
+        console.log(`Permanently deleting Firestore note: ${noteId}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot permanently delete Firestore note - not authenticated");
+          return { success: false, error: 'You must be logged in to delete this note.' };
+        }
+        
+        try {
+          // In a real app, you might want to actually delete the document
+          // For now, we'll just mark it as permanently deleted
+          const noteRef = doc(db, 'notes', noteId);
+          
+          await updateDoc(noteRef, {
+            permanentlyDeleted: true,
+            lastUpdated: serverTimestamp()
+          });
+          
+          console.log(`Permanently deleted Firestore note: ${noteId}`);
+          
+          // Update state
+          setTrashedNotes(prevTrashed => prevTrashed.filter(note => note.id !== noteId));
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error permanently deleting Firestore note:", err);
+          return { success: false, error: 'Failed to delete note. Please try again later.' };
+        }
+      }
+    } catch (err) {
+      console.error("Error in deleteNotePermanently:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Empty the trash
+  const emptyTrash = async () => {
+    console.log("emptyTrash called");
+    setError(null);
+    
+    try {
+      // CASE 1: Guest mode
+      if (isGuestMode) {
+        console.log("Emptying guest trash");
+        
+        try {
+          // Clear trash in localStorage
+          localStorage.setItem(`${GUEST_NOTES_KEY}-trash`, JSON.stringify([]));
+          
+          // Update state
+          setTrashedNotes([]);
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error emptying guest trash:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: Authenticated user
+      else if (currentUser) {
+        console.log("Emptying user trash");
+        
+        try {
+          const promises = trashedNotes.map(note => {
+            const noteRef = doc(db, 'notes', note.id);
+            return updateDoc(noteRef, { permanentlyDeleted: true });
+          });
+          
+          await Promise.all(promises);
+          console.log("All trashed notes marked as permanently deleted");
+          
+          // Update state
+          setTrashedNotes([]);
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error emptying user trash:", err);
+          return { success: false, error: 'Failed to empty trash. Please try again later.' };
+        }
+      } else {
+        console.error("Cannot empty trash - not authenticated and not in guest mode");
+        return { success: false, error: 'You must be logged in to perform this action.' };
+      }
+    } catch (err) {
+      console.error("Error in emptyTrash:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Get merge options for guest mode
   const getMergeOptions = () => {
+    const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+    const hasGuestNotes = guestNotes.length > 0;
+    const guestNotesCount = guestNotes.length;
+    
     return {
-      hasGuestNotes: isGuestMode && notes.length > 0,
-      guestNotesCount: notes.length
+      hasGuestNotes,
+      guestNotesCount,
+      guestNotes
     };
   };
-
-  // The value that will be supplied to consuming components
+  
+  // Check if a note exists
+  const doesNoteExist = async (noteId) => {
+    try {
+      const result = await getNote(noteId);
+      return result.success;
+    } catch (err) {
+      console.error("Error in doesNoteExist:", err);
+      return false;
+    }
+  };
+  
+  // Provide context values
   const value = {
     notes,
     trashedNotes,
     loading,
     error,
     isOffline,
-    isGuestMode,
-    getNote,
+    refreshNotes,
     createNote,
+    getNote,
     updateNote,
-    deleteNote, // Legacy function keeps API compatibility
     moveToTrash,
     restoreFromTrash,
-    permanentlyDeleteNote,
+    deleteNotePermanently,
     emptyTrash,
-    refreshNotes,
-    transferGuestNotesToUser,
-    getMergeOptions
+    getMergeOptions,
+    doesNoteExist
   };
-
+  
   return (
     <NotesContext.Provider value={value}>
       {children}
     </NotesContext.Provider>
   );
-};
+}
 
-export default NotesContext;
+// Custom hook to use the Notes context
+export function useNotes() {
+  return useContext(NotesContext);
+}

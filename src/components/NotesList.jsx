@@ -45,10 +45,14 @@ function NotesList() {
     }
     
     const lowerSearch = searchText.toLowerCase();
-    const filtered = notes.filter(note => 
-      (note.title?.toLowerCase().includes(lowerSearch) || 
-      note.content?.toLowerCase().includes(lowerSearch))
-    ).sort((a, b) => {
+    const filtered = notes.filter(note => {
+      // Check title
+      if (note.title?.toLowerCase().includes(lowerSearch)) return true;
+      
+      // For content, we need to strip HTML tags for proper text search
+      const textContent = note.content ? stripHtml(note.content) : '';
+      return textContent.toLowerCase().includes(lowerSearch);
+    }).sort((a, b) => {
       const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0);
       const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0);
       return dateB - dateA;
@@ -56,6 +60,14 @@ function NotesList() {
     
     setFilteredNotes(filtered);
   }, [notes, searchText]);
+  
+  // Helper function to strip HTML tags for search
+  const stripHtml = (html) => {
+    if (!html) return '';
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return tempDiv.textContent || tempDiv.innerText || '';
+  };
   
   // Set up periodic refresh
   useEffect(() => {
@@ -123,7 +135,7 @@ function NotesList() {
     e.preventDefault();
     e.stopPropagation();
     
-    // Create a simple DOCX-like format with HTML
+    // Create a simple HTML format with note content
     const htmlContent = `
       <html>
         <head>
@@ -136,7 +148,7 @@ function NotesList() {
         </head>
         <body>
           <h1>${note.title || 'Untitled Note'}</h1>
-          <div class="content">${note.content.replace(/\n/g, '<br>')}</div>
+          <div class="content">${note.content}</div>
           <div class="footer">
             Created with NoteSphere<br>
             ${new Date().toLocaleString()}
@@ -146,11 +158,11 @@ function NotesList() {
     `;
     
     // Create a Blob and download link
-    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-word' });
+    const blob = new Blob([htmlContent], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${note.title || 'Untitled Note'}.doc`;
+    a.download = `${note.title || 'Untitled Note'}.html`;
     document.body.appendChild(a);
     a.click();
     
@@ -175,10 +187,14 @@ function NotesList() {
   // Get note excerpt for preview
   const getExcerpt = (content, maxLength = 100) => {
     if (!content) return '';
-    if (content.length <= maxLength) return content;
+    
+    // Strip HTML tags
+    const textContent = stripHtml(content);
+    
+    if (textContent.length <= maxLength) return textContent;
     
     // Find the last complete word within the limit
-    return content.substring(0, maxLength).split(' ').slice(0, -1).join(' ') + '...';
+    return textContent.substring(0, maxLength).split(' ').slice(0, -1).join(' ') + '...';
   };
   
   // Force manual refresh
@@ -306,7 +322,7 @@ function NotesList() {
                     {note.title || 'Untitled Note'}
                   </h2>
                   
-                  <div className="text-gray-600 dark:text-gray-300 text-sm flex-grow overflow-hidden">
+                  <div className="text-gray-600 dark:text-gray-300 text-sm flex-grow overflow-hidden note-preview">
                     {getExcerpt(note.content)}
                   </div>
                   

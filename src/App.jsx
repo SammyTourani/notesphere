@@ -16,6 +16,7 @@ import SingleNoteEditor from './components/SingleNoteEditor';
 import SavePrompt from './components/SavePrompt';
 import MergeOptions from './components/MergeOptions';
 import NewNoteButton from './components/NewNoteButton';
+import FloatingThemeToggle from './components/FloatingThemeToggle';
 
 function App() {
   const { currentUser, isGuestMode, enableGuestMode } = useAuth();
@@ -68,10 +69,12 @@ function App() {
     if (path.startsWith('/notes/') && path !== '/notes/new') {
       const noteId = path.split('/').pop();
       localStorage.setItem(`lastNote-${currentUser.uid}`, noteId);
+      // Add timestamp for when the note was last viewed
+      localStorage.setItem(`lastNoteTimestamp-${currentUser.uid}`, Date.now().toString());
     }
   }, [currentUser, location]);
   
-  // Get initial redirect location
+  // Get initial redirect location with improved logic
   const getInitialRedirect = () => {
     if (!currentUser) return '/';
     
@@ -80,12 +83,22 @@ function App() {
       return '/notes';
     }
     
-    // Check if user was previously on a specific note
+    // Only redirect to a specific note if:
+    // 1. We have a last note ID in localStorage
+    // 2. We have a timestamp indicating when it was last viewed
+    // 3. The timestamp is recent (within the last hour)
     const lastNote = localStorage.getItem(`lastNote-${currentUser.uid}`);
-    if (lastNote) {
-      return `/notes/${lastNote}`;
+    const lastNoteTimestamp = localStorage.getItem(`lastNoteTimestamp-${currentUser.uid}`);
+    
+    if (lastNote && lastNoteTimestamp) {
+      const oneHourAgo = Date.now() - (60 * 60 * 1000);
+      if (parseInt(lastNoteTimestamp) > oneHourAgo) {
+        // Only redirect to the specific note if it was viewed recently
+        return `/notes/${lastNote}`;
+      }
     }
     
+    // Default: always go to notes list
     return '/notes';
   };
   
@@ -100,6 +113,7 @@ function App() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
       <SlideInMenu />
       <GuestBanner />
+      <FloatingThemeToggle />
       
       {/* Show merge options dialog if needed */}
       {showMergeOptions && (

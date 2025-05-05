@@ -1,9 +1,11 @@
-// src/components/SingleNoteEditor.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
+import { useFont } from '../context/FontContext';
 import { motion } from 'framer-motion';
+// Import TipTap Editor
+import TipTapEditor from './editor/TipTapEditor';
 
 function SingleNoteEditor() {
   const { noteId } = useParams();
@@ -11,6 +13,7 @@ function SingleNoteEditor() {
   const location = useLocation();
   const { currentUser, isGuestMode } = useAuth();
   const { getNote, createNote, updateNote, isOffline } = useNotes();
+  const { fontFamily, fontSize, lineHeight } = useFont();
   
   // State
   const [title, setTitle] = useState('');
@@ -147,9 +150,8 @@ function SingleNoteEditor() {
     debounceSave(newTitle, content);
   };
   
-  // Handle content changes
-  const handleContentChange = (e) => {
-    const newContent = e.target.value;
+  // Handle content changes from TipTap
+  const handleContentChange = (newContent) => {
     setContent(newContent);
     debounceSave(title, newContent);
   };
@@ -299,7 +301,7 @@ function SingleNoteEditor() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="pt-16 h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 font-inter overflow-hidden"
+      className="pt-16 h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden"
     >
       {/* Back button */}
       <motion.div
@@ -361,7 +363,7 @@ function SingleNoteEditor() {
       
       {/* Editor inputs */}
       <div className="flex justify-center pt-16 px-4">
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-2xl note-content">
           {/* Title input */}
           <motion.input
             initial={{ opacity: 0, y: 10 }}
@@ -375,16 +377,19 @@ function SingleNoteEditor() {
             autoFocus={location.pathname === '/notes/new'}
           />
           
-          {/* Content textarea */}
-          <motion.textarea
+          {/* TipTap Editor Component - ADDED TITLE PROP */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.3 }}
-            value={content}
-            onChange={handleContentChange}
-            placeholder="Write freely..."
-            className="w-full h-[70vh] p-2 bg-transparent text-gray-800 dark:text-gray-200 placeholder:text-gray-400/90 dark:placeholder:text-gray-500/90 text-base sm:text-lg font-normal leading-relaxed sm:leading-loose focus:outline-none resize-none"
-          />
+          >
+            <TipTapEditor 
+              content={content}
+              onChange={handleContentChange}
+              autofocus={location.pathname !== '/notes/new'} // Only autofocus when not on new note (since title has focus)
+              title={title} // Pass title to editor for word count calculations
+            />
+          </motion.div>
         </div>
       </div>
     </motion.div>
