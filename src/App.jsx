@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
@@ -8,6 +7,7 @@ import GuestBanner from './components/GuestBanner';
 import LandingPage from './pages/LandingPage';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
+import UserOnboarding from './pages/UserOnboarding';
 import NotesList from './components/NotesList';
 import TrashView from './components/TrashView';
 import SettingsPage from './pages/SettingsPage';
@@ -19,15 +19,15 @@ import NewNoteButton from './components/NewNoteButton';
 import FloatingThemeToggle from './components/FloatingThemeToggle';
 
 function App() {
-  const { currentUser, isGuestMode, enableGuestMode } = useAuth();
+  const { currentUser, isGuestMode, enableGuestMode, isNewUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [showMergeOptions, setShowMergeOptions] = useState(false);
   
   // For debugging
   useEffect(() => {
-    console.log("App rendered - currentUser:", !!currentUser, "isGuestMode:", isGuestMode);
-  }, [currentUser, isGuestMode]);
+    console.log("App rendered - currentUser:", !!currentUser, "isGuestMode:", isGuestMode, "isNewUser:", isNewUser);
+  }, [currentUser, isGuestMode, isNewUser]);
   
   // Handle the intentional logout flag for routes
   const isIntentionalLogout = sessionStorage.getItem('intentional_logout');
@@ -43,6 +43,19 @@ function App() {
       navigate('/notes', { replace: true });
     }
   }, [location.pathname, currentUser, isGuestMode, enableGuestMode, navigate]);
+  
+  // Redirect new users to onboarding
+  useEffect(() => {
+    // Only redirect if:
+    // 1. We have a current user (they're logged in)
+    // 2. They're marked as a new user
+    // 3. They're not already on the onboarding page
+    // 4. They're not in guest mode
+    if (currentUser && isNewUser && location.pathname !== '/onboarding' && !isGuestMode) {
+      console.log("Redirecting new user to onboarding");
+      navigate('/onboarding', { replace: true });
+    }
+  }, [currentUser, isNewUser, location.pathname, isGuestMode, navigate]);
   
   // Handle post-authentication redirection for guest users
   useEffect(() => {
@@ -78,6 +91,11 @@ function App() {
   const getInitialRedirect = () => {
     if (!currentUser) return '/';
     
+    // If they're a new user, send them to onboarding
+    if (isNewUser) {
+      return '/onboarding';
+    }
+    
     // Always redirect to notes list when coming from guest mode
     if (sessionStorage.getItem('guestSignInRedirect')) {
       return '/notes';
@@ -111,8 +129,13 @@ function App() {
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
-      <SlideInMenu />
-      <GuestBanner />
+      {/* Don't show menu/banner for onboarding */}
+      {location.pathname !== '/onboarding' && (
+        <>
+          <SlideInMenu />
+          <GuestBanner />
+        </>
+      )}
       <FloatingThemeToggle />
       
       {/* Show merge options dialog if needed */}
@@ -141,6 +164,15 @@ function App() {
             currentUser ? <Navigate to={getInitialRedirect()} replace /> : <SignUp />
           } />
           
+          {/* Onboarding route - only for authenticated users */}
+          <Route path="/onboarding" element={
+            currentUser ? (
+              isNewUser ? <UserOnboarding /> : <Navigate to="/notes" replace />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } />
+          
           {/* Guest mode routes */}
           <Route path="/guest" element={
             <Navigate to="/notes" replace />
@@ -157,10 +189,14 @@ function App() {
             path="/notes"
             element={
               currentUser || isGuestMode ? (
-                <>
-                  <NotesList />
-                  <NewNoteButton />
-                </>
+                currentUser && isNewUser ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <>
+                    <NotesList />
+                    <NewNoteButton />
+                  </>
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -171,7 +207,11 @@ function App() {
             path="/notes/new"
             element={
               currentUser || isGuestMode ? (
-                <SingleNoteEditor />
+                currentUser && isNewUser ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <SingleNoteEditor />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -182,7 +222,11 @@ function App() {
             path="/notes/:noteId"
             element={
               currentUser || isGuestMode ? (
-                <SingleNoteEditor />
+                currentUser && isNewUser ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <SingleNoteEditor />
+                )
               ) : (
                 <Navigate to="/login" replace />
               )
@@ -194,7 +238,11 @@ function App() {
             path="/trash"
             element={
               <ProtectedRoute>
-                <TrashView />
+                {isNewUser ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <TrashView />
+                )}
               </ProtectedRoute>
             }
           />
@@ -203,7 +251,11 @@ function App() {
             path="/settings"
             element={
               <ProtectedRoute>
-                <SettingsPage />
+                {isNewUser ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <SettingsPage />
+                )}
               </ProtectedRoute>
             }
           />

@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@2toad/profanity": "^3.1.1",
+    "@react-spring/three": "^10.0.0",
+    "@react-three/drei": "^10.0.8",
+    "@react-three/fiber": "^9.1.2",
     "@tiptap/extension-highlight": "^2.11.9",
     "@tiptap/extension-image": "^2.11.9",
     "@tiptap/extension-link": "^2.11.9",
@@ -19,13 +23,16 @@
     "@tiptap/pm": "^2.11.9",
     "@tiptap/react": "^2.11.9",
     "@tiptap/starter-kit": "^2.11.9",
+    "canvas-confetti": "^1.9.3",
     "dompurify": "^3.2.5",
     "firebase": "^11.6.1",
-    "framer-motion": "^12.9.4",
+    "framer-motion": "^12.11.3",
+    "lottie-react": "^2.4.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.3",
     "react-transition-group": "^4.4.5",
+    "three": "^0.176.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

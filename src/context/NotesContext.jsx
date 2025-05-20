@@ -194,7 +194,8 @@ export function NotesProvider({ children }) {
         content: sanitizeHtml(noteData.content) || '',
         lastUpdated: new Date().toISOString(),
         deleted: false,
-        deletedAt: null
+        deletedAt: null,
+        pinned: noteData.pinned || false
       };
       
       // CASE 1: User is authenticated and online - save to Firestore
@@ -355,7 +356,8 @@ export function NotesProvider({ children }) {
             created: Timestamp.fromDate(new Date(note.created)),
             lastUpdated: serverTimestamp(),
             deleted: note.deleted || false,
-            deletedAt: note.deletedAt ? Timestamp.fromDate(new Date(note.deletedAt)) : null
+            deletedAt: note.deletedAt ? Timestamp.fromDate(new Date(note.deletedAt)) : null,
+            pinned: note.pinned || false
           };
           
           const docRef = await addDoc(notesRef, firestoreNote);
@@ -412,7 +414,8 @@ export function NotesProvider({ children }) {
               success: true, 
               data: {
                 ...note,
-                content: sanitizeHtml(note.content)
+                content: sanitizeHtml(note.content),
+                pinned: note.pinned || false
               } 
             };
           } else {
@@ -439,7 +442,8 @@ export function NotesProvider({ children }) {
               success: true, 
               data: {
                 ...note,
-                content: sanitizeHtml(note.content)
+                content: sanitizeHtml(note.content),
+                pinned: note.pinned || false
               } 
             };
           } else {
@@ -481,7 +485,8 @@ export function NotesProvider({ children }) {
                 ...noteData,
                 content: sanitizeHtml(noteData.content),
                 lastUpdated: noteData.lastUpdated?.toDate().toISOString() || new Date().toISOString(),
-                created: noteData.created?.toDate().toISOString() || new Date().toISOString()
+                created: noteData.created?.toDate().toISOString() || new Date().toISOString(),
+                pinned: noteData.pinned || false
               } 
             };
           } else {
@@ -518,7 +523,8 @@ export function NotesProvider({ children }) {
       const updatedNote = {
         ...noteData,
         content: sanitizeHtml(noteData.content),
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
+        pinned: noteData.pinned !== undefined ? noteData.pinned : false
       };
       
       // CASE 1: It's a guest note
@@ -633,7 +639,8 @@ export function NotesProvider({ children }) {
           await updateDoc(noteRef, {
             title: updatedNote.title,
             content: updatedNote.content,
-            lastUpdated: serverTimestamp()
+            lastUpdated: serverTimestamp(),
+            pinned: updatedNote.pinned
           });
           
           console.log(`Updated Firestore note: ${noteId}`);
@@ -719,6 +726,223 @@ export function NotesProvider({ children }) {
       }
     } catch (err) {
       console.error("Error in updateNote:", err);
+      return { success: false, error: err.message };
+    }
+  };
+  
+  // Toggle pin status of a note
+  const togglePinStatus = async (noteId) => {
+    console.log(`togglePinStatus called for ID: ${noteId}`);
+    setError(null);
+    
+    try {
+      // Find the note in our current state to get its current pin status
+      const noteToToggle = notes.find(note => note.id === noteId);
+      
+      if (!noteToToggle) {
+        return { success: false, error: 'Note not found' };
+      }
+      
+      // The new pin status is the opposite of the current status
+      const newPinStatus = !(noteToToggle.pinned || false);
+      
+      // CASE 1: It's a guest note
+      if (noteId.startsWith('guest-')) {
+        console.log(`Toggling pin status of guest note to: ${newPinStatus}`);
+        
+        try {
+          // Get all guest notes
+          const guestNotes = JSON.parse(localStorage.getItem(GUEST_NOTES_KEY) || '[]');
+          
+          // Find the note index
+          const noteIndex = guestNotes.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Update the note
+            guestNotes[noteIndex] = {
+              ...guestNotes[noteIndex],
+              pinned: newPinStatus,
+              lastUpdated: new Date().toISOString()
+            };
+            
+            // Save back to localStorage
+            localStorage.setItem(GUEST_NOTES_KEY, JSON.stringify(guestNotes));
+            
+            // Update state
+            setNotes(prevNotes => {
+              const newNotes = [...prevNotes];
+              const stateNoteIndex = newNotes.findIndex(note => note.id === noteId);
+              
+              if (stateNoteIndex !== -1) {
+                newNotes[stateNoteIndex] = {
+                  ...newNotes[stateNoteIndex],
+                  pinned: newPinStatus,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return newNotes;
+            });
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error toggling pin status of guest note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 2: It's a local note (offline-created)
+      else if (noteId.startsWith('local-')) {
+        console.log(`Toggling pin status of local note to: ${newPinStatus}`);
+        
+        try {
+          // Get all local notes
+          const localNotes = getLocalNotes();
+          
+          // Find the note index
+          const noteIndex = localNotes.findIndex(note => note.id === noteId);
+          
+          if (noteIndex !== -1) {
+            // Update the note
+            localNotes[noteIndex] = {
+              ...localNotes[noteIndex],
+              pinned: newPinStatus,
+              lastUpdated: new Date().toISOString(),
+              needsSync: true
+            };
+            
+            // Save back to localStorage
+            localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(localNotes));
+            
+            // Update state
+            setNotes(prevNotes => {
+              const newNotes = [...prevNotes];
+              const stateNoteIndex = newNotes.findIndex(note => note.id === noteId);
+              
+              if (stateNoteIndex !== -1) {
+                newNotes[stateNoteIndex] = {
+                  ...newNotes[stateNoteIndex],
+                  pinned: newPinStatus,
+                  lastUpdated: new Date().toISOString()
+                };
+              }
+              
+              return newNotes;
+            });
+            
+            return { success: true };
+          } else {
+            return { success: false, error: 'Note not found' };
+          }
+        } catch (err) {
+          console.error("Error toggling pin status of local note:", err);
+          return { success: false, error: err.message };
+        }
+      }
+      // CASE 3: It's a Firestore note
+      else {
+        console.log(`Toggling pin status of Firestore note: ${noteId} to: ${newPinStatus}`);
+        
+        // Check if the user is authenticated
+        if (!currentUser) {
+          console.error("Cannot update Firestore note - not authenticated");
+          return { success: false, error: 'You must be logged in to update this note.' };
+        }
+        
+        try {
+          // Update the note in Firestore
+          const noteRef = doc(db, 'notes', noteId);
+          
+          await updateDoc(noteRef, {
+            pinned: newPinStatus,
+            lastUpdated: serverTimestamp()
+          });
+          
+          console.log(`Updated pin status of Firestore note: ${noteId}`);
+          
+          // Update state
+          setNotes(prevNotes => {
+            const newNotes = [...prevNotes];
+            const noteIndex = newNotes.findIndex(note => note.id === noteId);
+            
+            if (noteIndex !== -1) {
+              newNotes[noteIndex] = {
+                ...newNotes[noteIndex],
+                pinned: newPinStatus,
+                lastUpdated: new Date().toISOString()
+              };
+            }
+            
+            return newNotes;
+          });
+          
+          return { success: true };
+        } catch (err) {
+          console.error("Error updating Firestore note:", err);
+          
+          // If offline, save locally for later sync
+          if (isOffline) {
+            console.log("Offline - saving pin status change locally for later sync");
+            
+            try {
+              // Get current local notes
+              const localNotes = getLocalNotes();
+              
+              // Check if this note is already saved locally
+              const existingIndex = localNotes.findIndex(note => note.id === noteId);
+              
+              if (existingIndex !== -1) {
+                // Update existing local copy
+                localNotes[existingIndex] = {
+                  ...localNotes[existingIndex],
+                  pinned: newPinStatus,
+                  lastUpdated: new Date().toISOString(),
+                  needsSync: true
+                };
+              } else {
+                // Add new local copy
+                localNotes.push({
+                  id: noteId,
+                  ...noteToToggle,
+                  pinned: newPinStatus,
+                  lastUpdated: new Date().toISOString(),
+                  needsSync: true
+                });
+              }
+              
+              // Save back to localStorage
+              localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(localNotes));
+              
+              // Update state
+              setNotes(prevNotes => {
+                const newNotes = [...prevNotes];
+                const noteIndex = newNotes.findIndex(note => note.id === noteId);
+                
+                if (noteIndex !== -1) {
+                  newNotes[noteIndex] = {
+                    ...newNotes[noteIndex],
+                    pinned: newPinStatus,
+                    lastUpdated: new Date().toISOString()
+                  };
+                }
+                
+                return newNotes;
+              });
+              
+              return { success: true };
+            } catch (localErr) {
+              console.error("Error saving pin status locally:", localErr);
+              return { success: false, error: 'Failed to save pin status locally.' };
+            }
+          }
+          
+          return { success: false, error: 'Failed to update note. Please try again later.' };
+        }
+      }
+    } catch (err) {
+      console.error("Error in togglePinStatus:", err);
       return { success: false, error: err.message };
     }
   };
@@ -1184,7 +1408,8 @@ export function NotesProvider({ children }) {
     deleteNotePermanently,
     emptyTrash,
     getMergeOptions,
-    doesNoteExist
+    doesNoteExist,
+    togglePinStatus
   };
   
   return (

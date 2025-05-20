@@ -1,6 +1,6 @@
 // src/components/GuestBanner.jsx
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
@@ -9,13 +9,21 @@ function GuestBanner() {
   const { currentUser, isGuestMode } = useAuth();
   const { getMergeOptions } = useNotes();
   const navigate = useNavigate();
-  
-  // Don't show banner if not in guest mode or user is authenticated
-  if (!isGuestMode || currentUser) {
+  const location = useLocation(); // Get current location
+
+  // Determine if the banner should be shown
+  const shouldShowBanner =
+    isGuestMode &&
+    !currentUser &&
+    location.pathname !== '/login' &&
+    location.pathname !== '/signup' &&
+    location.pathname !== '/'; // Added condition to hide on home view
+
+  if (!shouldShowBanner) {
     return null;
   }
 
-  // Get info about guest notes
+  // Get info about guest notes (though not directly used for visibility here, it's good practice to keep)
   const { hasGuestNotes, guestNotesCount } = getMergeOptions();
   
   // Function to navigate to signup safely
@@ -45,4 +53,4 @@ function GuestBanner() {
   );
 }
 
-export default GuestBanner;
+export default GuestBanner; 

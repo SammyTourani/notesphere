@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotes } from '../context/NotesContext';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
+import PinButton from './PinButton';
 
 function NotesList() {
   const { notes, loading, error, isOffline, moveToTrash, refreshNotes } = useNotes();
@@ -12,6 +13,8 @@ function NotesList() {
   const [searchText, setSearchText] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const [filteredNotes, setFilteredNotes] = useState([]);
+  const [pinnedNotes, setPinnedNotes] = useState([]);
+  const [unpinnedNotes, setUnpinnedNotes] = useState([]);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState(null);
   const navigate = useNavigate();
@@ -22,25 +25,34 @@ function NotesList() {
     refreshNotes();
   }, [refreshNotes]);
 
-  // Filter notes when search text or notes change
+  // Filter and separate pinned and unpinned notes
   useEffect(() => {
     console.log("Filtering notes:", notes);
     
     if (!notes || notes.length === 0) {
       setFilteredNotes([]);
+      setPinnedNotes([]);
+      setUnpinnedNotes([]);
       return;
     }
     
     if (!searchText) {
-      // Sort notes by last updated, most recent first
-      const sortedNotes = [...notes].sort((a, b) => {
+      // Separate pinned and unpinned notes
+      const pinned = notes.filter(note => note.pinned).sort((a, b) => {
         const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0);
         const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0);
         return dateB - dateA;
       });
       
-      console.log("Sorted notes:", sortedNotes);
-      setFilteredNotes(sortedNotes);
+      const unpinned = notes.filter(note => !note.pinned).sort((a, b) => {
+        const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0);
+        const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0);
+        return dateB - dateA;
+      });
+      
+      setPinnedNotes(pinned);
+      setUnpinnedNotes(unpinned);
+      setFilteredNotes([...pinned, ...unpinned]);
       return;
     }
     
@@ -52,13 +64,24 @@ function NotesList() {
       // For content, we need to strip HTML tags for proper text search
       const textContent = note.content ? stripHtml(note.content) : '';
       return textContent.toLowerCase().includes(lowerSearch);
-    }).sort((a, b) => {
+    });
+    
+    // Separate filtered results into pinned and unpinned
+    const filteredPinned = filtered.filter(note => note.pinned).sort((a, b) => {
       const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0);
       const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0);
       return dateB - dateA;
     });
     
-    setFilteredNotes(filtered);
+    const filteredUnpinned = filtered.filter(note => !note.pinned).sort((a, b) => {
+      const dateA = a.lastUpdated ? new Date(a.lastUpdated) : new Date(0);
+      const dateB = b.lastUpdated ? new Date(b.lastUpdated) : new Date(0);
+      return dateB - dateA;
+    });
+    
+    setPinnedNotes(filteredPinned);
+    setUnpinnedNotes(filteredUnpinned);
+    setFilteredNotes([...filteredPinned, ...filteredUnpinned]);
   }, [notes, searchText]);
   
   // Helper function to strip HTML tags for search
@@ -130,7 +153,7 @@ function NotesList() {
     }
   };
   
-  // Handle note download as DOCX
+  // Handle note download as HTML
   const handleDownloadNote = (e, note) => {
     e.preventDefault();
     e.stopPropagation();
@@ -202,6 +225,316 @@ function NotesList() {
     console.log("Manual refresh triggered");
     refreshNotes();
   };
+  
+  // Render a note card (reused for both pinned and unpinned sections)
+  const renderNoteCard = (note) => (
+    <motion.div
+      key={note.id}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      whileHover={{ 
+        y: -5,
+        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+      }}
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden flex flex-col aspect-[3/4] max-h-[300px]"
+    >
+      {/* Main content area (clickable) */}
+      <div 
+        onClick={(e) => handleNoteClick(e, note.id)}
+        className="flex-grow p-4 cursor-pointer overflow-hidden flex flex-col"
+      >
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate flex-grow pr-2">
+            {note.title || 'Untitled Note'}
+          </h2>
+          <PinButton 
+            noteId={note.id}
+            isPinned={note.pinned || false}
+            className="flex-shrink-0"
+          />
+        </div>
+        
+        <div className="text-gray-600 dark:text-gray-300 text-sm flex-grow overflow-hidden note-preview">
+          {getExcerpt(note.content)}
+        </div>
+        
+        <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex flex-wrap items-center">
+          <span>{formatDate(note.lastUpdated)}</span>
+          {note.id && note.id.startsWith('local-') && (
+            <span className="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
+              Not synced
+            </span>
+          )}
+          {note.id && note.id.startsWith('guest-') && (
+            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs">
+              Guest Note
+            </span>
+          )}
+          
+          {/* Animated "Pinned" label */}
+          <AnimatePresence>
+            {note.pinned && (
+              <motion.span 
+                key={`pin-label-${note.id}`}
+                initial={{ opacity: 0, scale: 0.8, y: -10 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: 1, 
+                  y: 0,
+                  transition: { 
+                    type: "spring", 
+                    stiffness: 500, 
+                    damping: 30 
+                  }
+                }}
+                exit={{ opacity: 0, scale: 0.8, y: -10 }}
+                className="ml-2 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded text-xs flex items-center"
+              >
+                <motion.span 
+                  initial={{ width: 0 }}
+                  animate={{ 
+                    width: "auto",
+                    transition: { delay: 0.1, duration: 0.2 }
+                  }}
+                  className="overflow-hidden flex items-center"
+                >
+                  <motion.svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 24 24" 
+                    fill="currentColor" 
+                    className="w-3 h-3 mr-0.5"
+                    initial={{ opacity: 0, scale: 0 }}
+                    animate={{ 
+                      opacity: 1, 
+                      scale: 1,
+                      transition: { delay: 0.2 }
+                    }}
+                  >
+                    {/* Simple traditional push pin icon - matching the header icon */}
+                    <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+                  </motion.svg>
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ 
+                      opacity: 1,
+                      transition: { delay: 0.3 }
+                    }}
+                  >
+                    Pinned
+                  </motion.span>
+                </motion.span>
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+      
+      {/* Action buttons footer */}
+      <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center border-t border-gray-100 dark:border-gray-700">
+        {/* Download Button */}
+        <motion.button
+          onClick={(e) => handleDownloadNote(e, note)}
+          className="p-1.5 rounded-full text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
+          aria-label="Download note"
+          whileHover="hover"
+          initial="initial"
+        >
+          <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
+            {/* Document Icon */}
+            <motion.svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute inset-0"
+              variants={{
+                initial: { y: 0, opacity: 1 },
+                hover: { y: -8, opacity: 0 }
+              }}
+              transition={{ duration: 0.3 }}
+              style={{ pointerEvents: 'none' }}
+            >
+              <path
+                d="M14 2.5H6C5.44772 2.5 5 2.94772 5 3.5V20.5C5 21.0523 5.44772 21.5 6 21.5H18C18.5523 21.5 19 21.0523 19 20.5V7.5L14 2.5Z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M14 2.5V7.5H19"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M16 12.5H8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M16 16.5H8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M10 8.5H9H8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </motion.svg>
+
+            {/* Download Arrow and Circle */}
+            <motion.svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute inset-0"
+              variants={{
+                initial: { y: 8, opacity: 0 },
+                hover: { y: 0, opacity: 1 }
+              }}
+              transition={{ duration: 0.3 }}
+              style={{ pointerEvents: 'none' }}
+            >
+              {/* Circle */}
+              <motion.circle
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                variants={{
+                  initial: { pathLength: 0 },
+                  hover: { pathLength: 1 }
+                }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+              />
+
+              {/* Arrow */}
+              <motion.path
+                d="M12 8V16M12 16L16 12M12 16L8 12"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                variants={{
+                  initial: { y: -4, opacity: 0 },
+                  hover: { y: 0, opacity: 1 }
+                }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              />
+            </motion.svg>
+
+            {/* Pulse Effect */}
+            <motion.div
+              className="absolute inset-0 rounded-full bg-blue-400 dark:bg-blue-600"
+              variants={{
+                initial: { scale: 0, opacity: 0 },
+                hover: { 
+                  scale: 1.2, 
+                  opacity: [0, 0.2, 0],
+                  transition: { 
+                    repeat: Infinity, 
+                    duration: 1.2, 
+                    repeatDelay: 0.2
+                  }
+                }
+              }}
+              style={{ pointerEvents: 'none' }}
+            />
+          </div>
+        </motion.button>
+        
+        {/* Trash Button */}
+        <motion.button
+          onClick={(e) => openDeleteModal(e, note)}
+          disabled={deletingId === note.id}
+          className="p-1.5 rounded-full text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
+          aria-label="Delete note"
+          whileHover="hover"
+          initial="initial"
+        >
+          {deletingId === note.id ? (
+            <div className="w-5 h-5 rounded-full border-2 border-t-transparent border-gray-400 animate-spin" />
+          ) : (
+            <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
+              {/* Skinnier Trash Can Body */}
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="1.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="w-5 h-5"
+              >
+                {/* Modified path to make trash can skinnier */}
+                <path d="M4 6h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" />
+                {/* Adjusted vertical lines inside trash can */}
+                <line x1="9" y1="10" x2="9" y2="18" />
+                <line x1="12" y1="10" x2="12" y2="18" />
+                <line x1="15" y1="10" x2="15" y2="18" />
+              </svg>
+              
+              {/* Animated Lid - Pops off on hover */}
+              <motion.svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-5 h-5 absolute top-0 left-0"
+                variants={{
+                  initial: { y: 0 },
+                  hover: { y: -5 }
+                }}
+                transition={{ 
+                  type: "spring", 
+                  stiffness: 500, 
+                  damping: 15
+                }}
+                style={{ pointerEvents: 'none' }}
+              >
+                {/* Trash can lid */}
+                <path d="M4 6h16" />
+                {/* Top arch */}
+                <path d="M10 6V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
+              </motion.svg>
+              
+              {/* Red Pulse Effect */}
+              <motion.div
+                className="absolute inset-0 rounded-full bg-red-400 dark:bg-red-600"
+                variants={{
+                  initial: { scale: 0, opacity: 0 },
+                  hover: { 
+                    scale: 1.2, 
+                    opacity: [0, 0.2, 0],
+                    transition: { 
+                      repeat: Infinity, 
+                      duration: 1.2, 
+                      repeatDelay: 0.2
+                    }
+                  }
+                }}
+                style={{ pointerEvents: 'none' }}
+              />
+            </div>
+          )}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
   
   if (loading && filteredNotes.length === 0) {
     return (
@@ -299,253 +632,72 @@ function NotesList() {
             )}
           </div>
         ) : (
-          // Grid layout for more square-like cards
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {filteredNotes.map(note => (
-              <motion.div
-                key={note.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ 
-                  y: -5,
-                  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
-                }}
-                className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden flex flex-col aspect-[3/4] max-h-[300px]"
-              >
-                {/* Main content area (clickable) */}
-                <div 
-                  onClick={(e) => handleNoteClick(e, note.id)}
-                  className="flex-grow p-4 cursor-pointer overflow-hidden flex flex-col"
+          <div>
+            {/* Pinned Notes Section */}
+            <AnimatePresence>
+              {pinnedNotes.length > 0 && (
+                <motion.div 
+                  key="pinned-section"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-8"
                 >
-                  <h2 className="text-lg font-medium text-gray-900 dark:text-white truncate mb-2">
-                    {note.title || 'Untitled Note'}
-                  </h2>
-                  
-                  <div className="text-gray-600 dark:text-gray-300 text-sm flex-grow overflow-hidden note-preview">
-                    {getExcerpt(note.content)}
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="flex items-center mb-4 pl-1"
+                  >
+                    <motion.svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      fill="currentColor"
+                      className="w-5 h-5 text-amber-500 dark:text-amber-400 mr-2"
+                      initial={{ rotate: -30, scale: 0.8 }}
+                      animate={{ rotate: 0, scale: 1 }}
+                      transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 15 }}
+                    >
+                      {/* Simple traditional push pin icon */}
+                      <path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z" />
+                    </motion.svg>
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-200">Pinned Notes</h2>
+                  </motion.div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                    {pinnedNotes.map(renderNoteCard)}
                   </div>
                   
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                    {formatDate(note.lastUpdated)}
-                    {note.id && note.id.startsWith('local-') && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 rounded text-xs">
-                        Not synced
-                      </span>
-                    )}
-                    {note.id && note.id.startsWith('guest-') && (
-                      <span className="ml-2 px-1.5 py-0.5 bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded text-xs">
-                        Guest Note
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Action buttons footer */}
-                <div className="px-4 py-2 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center border-t border-gray-100 dark:border-gray-700">
-                  {/* Download Button - FIXED CURSOR ISSUE */}
-                  <motion.button
-                    onClick={(e) => handleDownloadNote(e, note)}
-                    className="p-1.5 rounded-full text-gray-500 hover:text-blue-500 dark:text-gray-400 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
-                    aria-label="Download note"
-                    whileHover="hover"
-                    initial="initial"
+                  {/* Divider */}
+                  {unpinnedNotes.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.3 }}
+                      className="my-8 border-t border-gray-200 dark:border-gray-700"
+                    />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+            
+            {/* Other Notes Section */}
+            {unpinnedNotes.length > 0 && (
+              <div>
+                {pinnedNotes.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center mb-4 pl-1"
                   >
-                    <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
-                      {/* Document Icon */}
-                      <motion.svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="absolute inset-0"
-                        variants={{
-                          initial: { y: 0, opacity: 1 },
-                          hover: { y: -8, opacity: 0 }
-                        }}
-                        transition={{ duration: 0.3 }}
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        <path
-                          d="M14 2.5H6C5.44772 2.5 5 2.94772 5 3.5V20.5C5 21.0523 5.44772 21.5 6 21.5H18C18.5523 21.5 19 21.0523 19 20.5V7.5L14 2.5Z"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M14 2.5V7.5H19"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M16 12.5H8"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M16 16.5H8"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M10 8.5H9H8"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </motion.svg>
-
-                      {/* Download Arrow and Circle */}
-                      <motion.svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="absolute inset-0"
-                        variants={{
-                          initial: { y: 8, opacity: 0 },
-                          hover: { y: 0, opacity: 1 }
-                        }}
-                        transition={{ duration: 0.3 }}
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {/* Circle */}
-                        <motion.circle
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          variants={{
-                            initial: { pathLength: 0 },
-                            hover: { pathLength: 1 }
-                          }}
-                          transition={{ duration: 0.6, ease: "easeInOut" }}
-                        />
-
-                        {/* Arrow */}
-                        <motion.path
-                          d="M12 8V16M12 16L16 12M12 16L8 12"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          variants={{
-                            initial: { y: -4, opacity: 0 },
-                            hover: { y: 0, opacity: 1 }
-                          }}
-                          transition={{ duration: 0.4, delay: 0.2 }}
-                        />
-                      </motion.svg>
-
-                      {/* Pulse Effect */}
-                      <motion.div
-                        className="absolute inset-0 rounded-full bg-blue-400 dark:bg-blue-600"
-                        variants={{
-                          initial: { scale: 0, opacity: 0 },
-                          hover: { 
-                            scale: 1.2, 
-                            opacity: [0, 0.2, 0],
-                            transition: { 
-                              repeat: Infinity, 
-                              duration: 1.2, 
-                              repeatDelay: 0.2
-                            }
-                          }
-                        }}
-                        style={{ pointerEvents: 'none' }}
-                      />
-                    </div>
-                  </motion.button>
-                  
-                  {/* Trash Button - MADE SKINNIER */}
-                  <motion.button
-                    onClick={(e) => openDeleteModal(e, note)}
-                    disabled={deletingId === note.id}
-                    className="p-1.5 rounded-full text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 relative cursor-pointer"
-                    aria-label="Delete note"
-                    whileHover="hover"
-                    initial="initial"
-                  >
-                    {deletingId === note.id ? (
-                      <div className="w-5 h-5 rounded-full border-2 border-t-transparent border-gray-400 animate-spin" />
-                    ) : (
-                      <div className="w-5 h-5 relative" style={{ pointerEvents: 'none' }}>
-                        {/* Skinnier Trash Can Body */}
-                        <svg 
-                          xmlns="http://www.w3.org/2000/svg" 
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          className="w-5 h-5"
-                        >
-                          {/* Modified path to make trash can skinnier */}
-                          <path d="M4 6h16v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z" />
-                          {/* Adjusted vertical lines inside trash can */}
-                          <line x1="9" y1="10" x2="9" y2="18" />
-                          <line x1="12" y1="10" x2="12" y2="18" />
-                          <line x1="15" y1="10" x2="15" y2="18" />
-                        </svg>
-                        
-                        {/* Animated Lid - Pops off on hover */}
-                        <motion.svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="w-5 h-5 absolute top-0 left-0"
-                          variants={{
-                            initial: { y: 0 },
-                            hover: { y: -5 }
-                          }}
-                          transition={{ 
-                            type: "spring", 
-                            stiffness: 500, 
-                            damping: 15
-                          }}
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {/* Trash can lid */}
-                          <path d="M4 6h16" />
-                          {/* Top arch */}
-                          <path d="M10 6V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
-                        </motion.svg>
-                        
-                        {/* Red Pulse Effect */}
-                        <motion.div
-                          className="absolute inset-0 rounded-full bg-red-400 dark:bg-red-600"
-                          variants={{
-                            initial: { scale: 0, opacity: 0 },
-                            hover: { 
-                              scale: 1.2, 
-                              opacity: [0, 0.2, 0],
-                              transition: { 
-                                repeat: Infinity, 
-                                duration: 1.2, 
-                                repeatDelay: 0.2
-                              }
-                            }
-                          }}
-                          style={{ pointerEvents: 'none' }}
-                        />
-                      </div>
-                    )}
-                  </motion.button>
+                    <h2 className="text-lg font-medium text-gray-900 dark:text-gray-200">Other Notes</h2>
+                  </motion.div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                  {unpinnedNotes.map(renderNoteCard)}
                 </div>
-              </motion.div>
-            ))}
+              </div>
+            )}
           </div>
         )}
         

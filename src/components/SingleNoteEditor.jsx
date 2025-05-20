@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotes } from '../context/NotesContext';
-// Removed useFont import as it's handled in TipTapEditor or editor setup
 import { motion } from 'framer-motion';
 
 // Tiptap imports for useEditor
@@ -18,6 +17,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import TipTapEditor from './editor/TipTapEditor';
 import EditorToolbar from './editor/EditorToolbar';
 import WordCountDisplay from './editor/WordCountDisplay';
+import PinButton from './PinButton';
 
 function SingleNoteEditor() {
   const { noteId } = useParams();
@@ -31,6 +31,8 @@ function SingleNoteEditor() {
   const [saveStatus, setSaveStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isPinned, setIsPinned] = useState(false);
+  const [noteKey, setNoteKey] = useState(Date.now()); // Key to force PinButton re-render
 
   const isSavingRef = useRef(false);
   const saveTimeoutRef = useRef(null);
@@ -66,7 +68,6 @@ function SingleNoteEditor() {
     onUpdate: ({ editor: updatedEditor }) => {
       handleContentChange(updatedEditor.getHTML());
     },
-    // autofocus: location.pathname !== '/notes/new', // Autofocus handled by title input or editor based on context
   });
 
   useEffect(() => {
@@ -100,6 +101,7 @@ function SingleNoteEditor() {
     if (location.pathname === '/notes/new' && (noteId === 'new' || !noteId)) {
       setTitle('');
       setContent(''); 
+      setIsPinned(false);
       actualNoteIdRef.current = null;
       hasBeenSavedRef.current = false;
       if (editor) editor.commands.clearContent(false); // Clear editor without emitting update
@@ -110,6 +112,7 @@ function SingleNoteEditor() {
     if (location.pathname === '/notes/new') {
       setTitle('');
       setContent('');
+      setIsPinned(false);
       actualNoteIdRef.current = null;
       hasBeenSavedRef.current = false;
       setError(null);
@@ -130,6 +133,7 @@ function SingleNoteEditor() {
       if (noteId === 'new') {
         setTitle('');
         setContent('');
+        setIsPinned(false);
         actualNoteIdRef.current = null;
         hasBeenSavedRef.current = false;
         setError(null);
@@ -145,6 +149,7 @@ function SingleNoteEditor() {
       if (result.success) {
         setTitle(result.data.title || '');
         setContent(result.data.content || ''); 
+        setIsPinned(result.data.pinned || false);
         actualNoteIdRef.current = noteId;
         hasBeenSavedRef.current = true;
         setError(null);
@@ -180,6 +185,18 @@ function SingleNoteEditor() {
     setContent(newContent); 
     debounceSave(title, newContent);
   };
+
+  // Update local pin state when pin status changes
+  const handlePinChange = useCallback((isPinnedNow) => {
+    console.log("Pin status changed to:", isPinnedNow);
+    // Update the pin state in the component
+    setIsPinned(isPinnedNow);
+    
+    // Force re-render of pin button with new key
+    setNoteKey(Date.now());
+    
+    // No need to reload the entire note - the context will handle updating the data
+  }, []);
 
   const handleBackToNotes = () => {
     if (saveTimeoutRef.current) {
@@ -269,12 +286,13 @@ function SingleNoteEditor() {
       transition={{ duration: 0.3 }}
       className="pt-16 h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 overflow-hidden flex flex-col"
     >
+      {/* Header section with back button and info */}
       <div className="fixed top-0 left-0 right-0 z-20"> 
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1, duration: 0.3 }}
-          className="absolute top-20 left-4" 
+          className="absolute top-20 left-4"
         >
           <motion.button
             whileHover={{ scale: 1.1 }}
@@ -304,19 +322,38 @@ function SingleNoteEditor() {
         </motion.div>
       </div>
 
-      <div className="flex-grow flex justify-center pt-16 px-4 overflow-y-auto pb-24"> {/* Added pb-24 for space for fixed controls */}
+      <div className="flex-grow flex justify-center pt-16 px-4 overflow-y-auto pb-24">
         <div className="w-full max-w-2xl note-content">
-          <motion.input
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-            type="text"
-            value={title}
-            onChange={handleTitleChange}
-            placeholder="Note title..."
-            className="w-full p-2 mb-2 bg-transparent text-gray-900 dark:text-white text-2xl font-bold focus:outline-none"
-            autoFocus={location.pathname === '/notes/new'} // Autofocus title for new notes
-          />
+          <div className="flex items-center justify-between mb-2">
+            <motion.input
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+              type="text"
+              value={title}
+              onChange={handleTitleChange}
+              placeholder="Note title..."
+              className="flex-grow p-2 bg-transparent text-gray-900 dark:text-white text-2xl font-bold focus:outline-none"
+              autoFocus={location.pathname === '/notes/new'}
+            />
+            
+            {/* Repositioned Pin Button */}
+            {hasBeenSavedRef.current && (
+              <motion.div 
+                key={noteKey} // Force re-render when pin state changes
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="flex-shrink-0"
+              >
+                <PinButton 
+                  noteId={actualNoteIdRef.current}
+                  isPinned={isPinned}
+                  onPinChange={handlePinChange}
+                />
+              </motion.div>
+            )}
+          </div>
           
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -330,9 +367,9 @@ function SingleNoteEditor() {
       
       {editor && ( 
         <motion.div
-          className="editor-controls" // This class has `left: 50%` and `position: fixed`
-          initial={{ opacity: 0, y: 30, x: "-50%" }} // Add x: "-50%"
-          animate={{ opacity: 1, y: 0, x: "-50%" }}   // Add x: "-50%"
+          className="editor-controls"
+          initial={{ opacity: 0, y: 30, x: "-50%" }}
+          animate={{ opacity: 1, y: 0, x: "-50%" }}
           transition={{ delay: 0.4, duration: 0.4, ease: "easeOut" }} 
         >
           <EditorToolbar editor={editor} />

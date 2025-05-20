@@ -411,3 +411,16 @@
     padding: 0.5rem;
   }
 }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
