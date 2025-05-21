@@ -9,7 +9,7 @@ import { auth } from '../firebaseConfig';
 
 const SlideInMenu = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const { currentUser, isGuestMode } = useAuth();
+  const { currentUser, isGuestMode, userProfile } = useAuth();
   const { trashedNotes } = useNotes();
   const { darkMode } = useTheme();
   const location = useLocation();
@@ -48,10 +48,12 @@ const SlideInMenu = () => {
 
   // Extract user initial for avatar
   useEffect(() => {
-    if (currentUser?.email) {
+    if (userProfile?.displayName) {
+      setUserInitial(userProfile.displayName.charAt(0).toUpperCase());
+    } else if (currentUser?.email) {
       setUserInitial(currentUser.email.charAt(0).toUpperCase());
     }
-  }, [currentUser]);
+  }, [currentUser, userProfile]);
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
@@ -108,6 +110,16 @@ const SlideInMenu = () => {
     navigate('/');
   };
 
+  // Fixed: Navigate to profile page with proper logging and explicit path
+  const handleProfileClick = () => {
+    console.log("Profile clicked, navigating to /profile");
+    closeMenu();
+    // Force navigation to the profile path, bypassing any redirects
+    setTimeout(() => {
+      navigate('/profile', { replace: true });
+    }, 10);
+  };
+
   // Stop clicks inside the menu from closing it
   const handleMenuClick = (e) => {
     e.stopPropagation();
@@ -134,6 +146,16 @@ const SlideInMenu = () => {
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+        </svg>
+      ),
+    },
+    {
+      to: '/profile',
+      label: 'Profile',
+      description: 'Manage your personal information',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
         </svg>
       ),
     },
@@ -183,6 +205,16 @@ const SlideInMenu = () => {
     boxShadow: darkMode ? '0 4px 14px 0 rgba(0, 0, 0, 0.25)' : '0 4px 14px 0 rgba(0, 0, 0, 0.08)',
     borderColor: darkMode ? 'rgba(75, 85, 99, 0.5)' : 'rgba(229, 231, 235, 0.5)',
     transition: 'background-color 0.15s, box-shadow 0.15s, border-color 0.15s'
+  };
+
+  // Get the avatar image
+  const getAvatarImage = () => {
+    if (userProfile?.photoURL) {
+      return userProfile.photoURL;
+    }
+    
+    // Default avatar with initial
+    return `https://ui-avatars.com/api/?name=${userInitial}&background=7C3AED&color=fff&size=200`;
   };
 
   return (
@@ -353,12 +385,21 @@ const SlideInMenu = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1, duration: 0.4 }}
                 >
-                  <div className="p-4 rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-md shadow-sm border border-white/50 dark:border-gray-700/50 overflow-hidden relative">
+                  <motion.div 
+                    className="rounded-2xl bg-white/50 dark:bg-gray-800/50 backdrop-blur-md shadow-sm border border-white/50 dark:border-gray-700/50 overflow-hidden relative"
+                    whileHover={{ 
+                      y: -5,
+                      boxShadow: "0 10px 25px -5px rgba(124, 58, 237, 0.2)"
+                    }}
+                    onClick={handleProfileClick}
+                    role="button"
+                    aria-label="View and edit profile"
+                  >
                     {/* Enhanced subtle background pattern for the card */}
                     <div className="absolute inset-0 bg-grid-gray-100/[0.07] dark:bg-grid-gray-700/[0.07] -z-10"></div>
                     
-                    <div className="flex items-center">
-                      <div className="relative">
+                    <div className="flex items-center p-4">
+                      <div className="relative group">
                         {/* Enhanced premium avatar with 3D-like effect */}
                         <div className="relative">
                           {/* Enhanced soft shadow behind avatar */}
@@ -371,72 +412,93 @@ const SlideInMenu = () => {
                             className="absolute -inset-1 bg-gradient-to-br from-purple-500/40 to-blue-500/40 dark:from-purple-400/30 dark:to-blue-400/30 blur-md rounded-xl opacity-70"
                           ></motion.div>
                           
-                          {/* Enhanced avatar with inner glass effect */}
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                            className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md border-2 border-white/70 dark:border-white/10 overflow-hidden"
-                          >
-                            {/* Enhanced inner glass highlight */}
-                            <div className="absolute top-0 left-0 right-0 h-1/3 bg-white/30 rounded-t-sm"></div>
+                          {/* Profile image with hover effects */}
+                          <div className="relative w-16 h-16 rounded-xl overflow-hidden shadow-md border-2 border-white/70 dark:border-white/10 group-hover:border-purple-300 dark:group-hover:border-purple-500/50 transition-all duration-300">
+                            <img 
+                              src={getAvatarImage()}
+                              alt={userProfile?.displayName || "User"}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
                             
-                            {/* User initial */}
-                            <span className="relative z-10 text-white text-xl font-semibold">{userInitial}</span>
+                            {/* Hover overlay with edit icon */}
+                            <div className="absolute inset-0 bg-purple-600/0 group-hover:bg-purple-600/60 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100">
+                              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                              </svg>
+                            </div>
+                          </div>
+                          
+                          {/* Online status indicator */}
+                          <motion.div 
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ 
+                              delay: 0.5, 
+                              type: "spring",
+                              stiffness: 500,
+                              damping: 15
+                            }}
+                            className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-green-500 border-2 border-white dark:border-gray-800 rounded-full flex items-center justify-center shadow-lg"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </motion.div>
+                        </div>
+                      </div>
+                      
+                      {/* User information with animations */}
+                      <div className="ml-4 flex-1">
+                        {/* Username with tooltip if truncated */}
+                        <div className="flex items-center">
+                          <h3 
+                            className="font-semibold text-gray-900 dark:text-white text-base truncate"
+                            title={userProfile?.displayName || currentUser?.email}
+                          >
+                            {userProfile?.displayName || displayEmail}
+                          </h3>
+                          
+                          {/* Edit profile subtle indicator */}
+                          <motion.div 
+                            initial={{ opacity: 0, x: -5 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.7 }}
+                            className="ml-2 text-purple-600 dark:text-purple-400"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                            </svg>
                           </motion.div>
                         </div>
                         
-                        {/* Enhanced status indicator with spring animation */}
-                        <motion.div 
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ 
-                            delay: 0.5, 
-                            type: "spring",
-                            stiffness: 500,
-                            damping: 15
-                          }}
-                          className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-green-400 to-green-500 border-2 border-white dark:border-gray-800 rounded-full flex items-center justify-center shadow-lg"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </motion.div>
+                        {/* Email display */}
+                        <div className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5" title={currentUser?.email}>
+                          {displayEmail}
+                        </div>
+
+                        {/* Usage preferences tags */}
+                        {userProfile?.usagePreferences && userProfile.usagePreferences.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {userProfile.usagePreferences.map(usage => (
+                              <span 
+                                key={usage} 
+                                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
+                              >
+                                {usage.charAt(0).toUpperCase() + usage.slice(1)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       
-                      {/* IMPROVED EMAIL DISPLAY SECTION - Single line with truncation */}
-                      <div className="ml-4 overflow-hidden flex-1">
-                        {/* Email container with improved single-line display */}
-                        <div 
-                          ref={emailContainerRef}
-                          className="relative bg-white/30 dark:bg-gray-800/30 rounded-lg px-3 py-1.5 border border-white/20 dark:border-gray-700/30 shadow-inner"
-                        >
-                          <div className="text-gray-800 dark:text-gray-100 font-medium whitespace-nowrap flex items-center">
-                            {/* Email icon for visual clarity */}
-                            <svg className="w-3.5 h-3.5 mr-1.5 flex-shrink-0 text-purple-500 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                            </svg>
-                            
-                            {/* Truncated email text with tooltip for the full email */}
-                            <span 
-                              className="truncate text-sm"
-                              title={currentUser?.email} // Show full email on hover
-                            >
-                              {displayEmail || currentUser?.email}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Enhanced status indicator with pulse animation */}
-                        <div className="text-xs text-gray-600 dark:text-gray-300 flex items-center mt-1.5 pl-1">
-                          <span className="flex h-1.5 w-1.5 relative mr-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500"></span>
-                          </span>
-                          Active session
-                        </div>
+                      {/* Subtle arrow indicator */}
+                      <div className="text-gray-400 dark:text-gray-500 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 </motion.div>
               )}
 

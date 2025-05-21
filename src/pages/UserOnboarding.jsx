@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence, useAnimation, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import PageTransition from '../components/PageTransition';
 import Lottie from 'lottie-react';
@@ -280,67 +280,77 @@ const TypeWriter = ({ text, speed = 40, onComplete = () => {}, className = '' })
 };
 
 // Particle system component for decorative effects
-const ParticleSystem = ({ color = '#8B5CF6', count = 50 }) => {
+const ParticleSystem = ({ color = '#8B5CF6', count = 70 }) => { // increased count from 50 to 70
   const canvasRef = useRef(null);
   const particlesRef = useRef([]);
   const animationRef = useRef(null);
+  const mousePos = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+  
+  // Listen to mouse movement to update mousePos
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mousePos.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
   
   useEffect(() => {
     if (!canvasRef.current) return;
-    
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    
-    // Set canvas size
     const setCanvasSize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
     };
-    
-    // Initialize particles
     const initParticles = () => {
       particlesRef.current = [];
       for (let i = 0; i < count; i++) {
         particlesRef.current.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
-          size: Math.random() * 2 + 1,
+          size: Math.random() * 3 + 2, // size from 2 to 5 (bigger particles)
           speedX: (Math.random() - 0.5) * 0.5,
           speedY: (Math.random() - 0.5) * 0.5,
           opacity: Math.random() * 0.5 + 0.3
         });
       }
     };
-    
-    // Animate particles
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
       particlesRef.current.forEach(particle => {
         ctx.beginPath();
         ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
         ctx.fillStyle = color + Math.floor(particle.opacity * 255).toString(16).padStart(2, '0');
         ctx.fill();
         
+        // Mouse repulsion: if particle is within 100px, push it away and slightly enlarge it.
+        const dx = particle.x - mousePos.current.x;
+        const dy = particle.y - mousePos.current.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 100) {
+          const force = (100 - dist) / 100;
+          particle.speedX += (dx / dist) * force * 0.05;
+          particle.speedY += (dy / dist) * force * 0.05;
+          particle.size = Math.min(particle.size * 1.01, 10);
+        } else {
+          particle.size = Math.max(particle.size * 0.99, 2);
+        }
+        
         particle.x += particle.speedX;
         particle.y += particle.speedY;
         
-        // Bounce off edges
         if (particle.x < 0 || particle.x > canvas.width) {
           particle.speedX *= -1;
         }
-        
         if (particle.y < 0 || particle.y > canvas.height) {
           particle.speedY *= -1;
         }
-        
-        // Random changes in direction
         if (Math.random() > 0.99) {
           particle.speedX = (Math.random() - 0.5) * 0.5;
           particle.speedY = (Math.random() - 0.5) * 0.5;
         }
       });
-      
       animationRef.current = requestAnimationFrame(animate);
     };
     
@@ -518,6 +528,61 @@ const FloatingElements = () => {
     </div>
   );
 };
+
+// Add this new CountdownTimer component near the other utility components
+const CountdownTimer = ({ seconds, onComplete }) => {
+  const [timeLeft, setTimeLeft] = useState(seconds);
+  const circumference = 2 * Math.PI * 22; // Circle radius is 22
+  const strokeDashoffset = ((seconds - timeLeft) / seconds) * circumference;
+  
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onComplete();
+      return;
+    }
+    
+    const timer = setTimeout(() => {
+      setTimeLeft(timeLeft - 1);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [timeLeft, onComplete, seconds]);
+  
+  return (
+    <div className="flex items-center justify-center">
+      <div className="relative w-16 h-16">
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 48 48">
+          {/* Background circle */}
+          <circle
+            cx="24"
+            cy="24"
+            r="22"
+            fill="none"
+            stroke="rgba(229, 231, 235, 0.5)"
+            strokeWidth="4"
+          />
+          {/* Progress circle */}
+          <circle
+            cx="24"
+            cy="24"
+            r="22"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="4"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="text-green-500 dark:text-green-400 transition-all duration-1000 ease-linear"
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center font-bold text-xl text-green-600 dark:text-green-400">
+          {timeLeft}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main UserOnboarding Component
 function UserOnboarding() {
   const { currentUser, updateUserProfile, isNewUser } = useAuth();
@@ -545,11 +610,15 @@ function UserOnboarding() {
   const timeoutRef = useRef(null);
   
   // Motion controls
-  // const controls = useAnimation(); // No longer needed for step transitions
   const parallaxX = useMotionValue(0);
   const parallaxY = useMotionValue(0);
-  const rotateX = useTransform(parallaxY, [-100, 100], [5, -5]);
-  const rotateY = useTransform(parallaxX, [-100, 100], [-5, 5]);
+  // NEW: Smooth the parallax values using a spring
+  const smoothParallaxX = useSpring(parallaxX, { stiffness: 300, damping: 30 });
+  const smoothParallaxY = useSpring(parallaxY, { stiffness: 300, damping: 30 });
+  
+  // Update the rotated transforms to use the smoothed values
+  const rotateX = useTransform(smoothParallaxY, [-100, 100], [5, -5]);
+  const rotateY = useTransform(smoothParallaxX, [-100, 100], [-5, 5]);
   
   // Enhanced animation variants
   const containerVariants = {
@@ -630,7 +699,10 @@ function UserOnboarding() {
   useEffect(() => {
     if (currentUser === null) {
       navigate('/login');
-    } else if (isNewUser === false && !sessionStorage.getItem('needsOnboarding')) {
+    } else if (isNewUser === false && 
+              !sessionStorage.getItem('needsOnboarding') && 
+              !sessionStorage.getItem('showingOnboardingFinalStep')) {
+      // Only redirect if profile is complete AND we're NOT trying to show the final onboarding step
       navigate('/notes');
     }
   }, [currentUser, isNewUser, navigate]);
@@ -749,41 +821,82 @@ function UserOnboarding() {
     }
   };
   
-  // Submit user profile data
-  const handleSubmit = async () => {
+  // Submit user profile data - MODIFIED: Now only advances to the next step
+  // This function is called when "Complete Setup" is clicked on step 4 (Usage Preferences)
+  const handleSubmit = () => {
+    // No profile update here. All data is saved in completeOnboarding from step 5.
+    // Set the flag indicating we are proceeding to the final step.
+    // The useEffect for currentStep === 5 will also set this, but this is an early signal.
+    sessionStorage.setItem('showingOnboardingFinalStep', 'true');
+    handleContinue(); // This increments currentStep to 5
+  };
+  
+  // Complete Onboarding - MODIFIED: Now saves all profile data
+  const completeOnboarding = useCallback(async () => {
+    if (loading) return; // Prevent multiple submissions
     setLoading(true);
     setError('');
-    
+
     try {
       const profileData = {
         displayName: name.trim(),
         photoURL: selectedAvatar.id === 10 ? customAvatar : selectedAvatar.image,
         theme: selectedTheme.id,
         usagePreferences: selectedUsage,
-        isProfileComplete: true,
+        isProfileComplete: true, // Mark profile as complete now
       };
-      
-      const result = await updateUserProfile(profileData);
-      
+
+      const result = await updateUserProfile(profileData); // Save all data
+
       if (result.success) {
-        triggerConfetti();
-        handleContinue(); // This will now just increment the step for AnimatePresence
+        triggerConfetti(); // Confetti on final success
+        localStorage.setItem('onboardingComplete', 'true');
+        sessionStorage.removeItem('needsOnboarding');
+        sessionStorage.removeItem('showingOnboardingFinalStep'); // Remove flag before navigation
+
+        // Delay navigation slightly to allow confetti/animations
+        setTimeout(() => {
+          navigate('/notes', { replace: true });
+        }, 700); // Increased delay slightly
       } else {
-        setError(result.error || "Failed to save your profile");
+        setError(result.error || "Failed to complete setup. Please try again.");
+        // Clear the flag even on failure to allow retry or prevent sticky state
+        sessionStorage.removeItem('showingOnboardingFinalStep');
+        setLoading(false);
       }
     } catch (err) {
-      console.error("Error saving profile:", err);
+      console.error("Error completing onboarding profile:", err);
       setError("An unexpected error occurred. Please try again.");
-    } finally {
+      sessionStorage.removeItem('showingOnboardingFinalStep');
       setLoading(false);
     }
-  };
+    // setLoading(false) is handled for error cases. On success, component unmounts.
+  }, [
+    name, selectedAvatar, customAvatar, selectedTheme, selectedUsage, // User data
+    updateUserProfile, navigate, // Functions from context/router
+    loading, setLoading, setError // Local state and setters
+  ]);
   
-  // Complete onboarding and navigate to app
-  const handleFinish = () => {
-    sessionStorage.removeItem('needsOnboarding');
-    navigate('/notes');
-  };
+  // Effect to set the 'showingOnboardingFinalStep' flag when step 5 is active
+  useEffect(() => {
+    if (currentStep === 5) {
+      sessionStorage.setItem('showingOnboardingFinalStep', 'true');
+    }
+    // Do not clean up the flag here; it's cleaned by completeOnboarding
+    // or if the user navigates away through other means.
+  }, [currentStep]);
+  
+  // Redirect if user is not new or not logged in - This logic remains crucial
+  useEffect(() => {
+    if (currentUser === null) {
+      navigate('/login');
+    } else if (isNewUser === false && 
+              !sessionStorage.getItem('needsOnboarding') && 
+              !sessionStorage.getItem('showingOnboardingFinalStep')) {
+      // Only redirect if profile is complete AND we're NOT trying to show the final onboarding step
+      navigate('/notes');
+    }
+  }, [currentUser, isNewUser, navigate]);
   
   // Generate a random avatar
   const generateRandomAvatar = () => {
@@ -794,6 +907,8 @@ function UserOnboarding() {
     setCustomAvatar(newAvatarUrl);
   };
   
+  // Remove the existing useEffect that auto-navigates after a delay
+  // and replace the step 5 rendering with this new version
   return (
     <PageTransition>
       <div 
@@ -802,8 +917,7 @@ function UserOnboarding() {
       >
         <GradientBackground />
         <FloatingElements />
-        <ParticleSystem color="#8B5CF6" count={50} />
-        <CursorFollower />
+        <ParticleSystem color="#8B5CF6" count={70} />
         
         <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 z-50">
           <motion.div 
@@ -879,21 +993,20 @@ function UserOnboarding() {
                         <span className={`inline-block w-1 h-8 ml-0.5 bg-purple-600 dark:bg-purple-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
                       </motion.h1>
                       
-                      {typingComplete && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.5 }}
-                          className="space-y-4"
-                        >
-                          <motion.p variants={itemVariants} className="text-xl text-gray-700 dark:text-gray-300">
-                            We're excited to help you organize your thoughts and ideas.
-                          </motion.p>
-                          <motion.p variants={itemVariants} className="text-gray-600 dark:text-gray-400">
-                            Let's personalize your experience in just a few simple steps.
-                          </motion.p>
-                        </motion.div>
-                      )}
+                      {/* Removed typingComplete condition so the text always appears */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                        className="space-y-4"
+                      >
+                        <motion.p variants={itemVariants} className="text-xl text-gray-700 dark:text-gray-300">
+                          We're excited to help you organize your thoughts and ideas.
+                        </motion.p>
+                        <motion.p variants={itemVariants} className="text-gray-600 dark:text-gray-400">
+                          Let's personalize your experience in just a few simple steps.
+                        </motion.p>
+                      </motion.div>
                     </div>
                     
                     {typingComplete && (
@@ -970,17 +1083,23 @@ function UserOnboarding() {
                             {welcomeMessage}
                             <span className={`inline-block w-1 h-6 ml-0.5 bg-purple-600 dark:bg-purple-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
                           </h2>
-                          
-                          {typingComplete && (
-                            <motion.p 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ duration: 0.5 }}
-                              className="text-gray-700 dark:text-gray-300"
-                            >
-                              We'll use this to personalize your experience
-                            </motion.p>
-                          )}
+                          {/* Removed the conditional rendering so the extra text always shows */}
+                          <motion.p 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.5 }}
+                            className="text-gray-700 dark:text-gray-300"
+                          >
+                            We'll use this to personalize your experience
+                          </motion.p>
+                          <motion.p 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.5 }}
+                            className="mt-4 text-sm text-gray-500 dark:text-gray-400"
+                          >
+                            This will only take a minute. Please enter your name.
+                          </motion.p>
                         </motion.div>
                         
                         {typingComplete && (
@@ -1396,121 +1515,87 @@ function UserOnboarding() {
                   className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-3xl shadow-xl overflow-hidden border border-white/20 dark:border-gray-700/50"
                 >
                   <div className="p-8 md:p-12">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                      <motion.div variants={itemVariants} className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex items-center justify-center">
-                        <motion.div
-                          className="text-7xl md:text-8xl"
-                          animate={{
-                            rotate: [0, 360],
-                            scale: [1, 1.1, 1, 1.1, 1],
-                          }}
-                          transition={{
-                            rotate: {
-                              duration: 10, 
-                              repeat: Infinity,
-                              ease: "linear"
-                            },
-                            scale: {
-                              duration: 3, 
-                              repeat: Infinity,
-                              ease: "easeInOut"
-                            }
-                          }}
-                        >
-                          ⚙️
-                        </motion.div>
-                      </motion.div>
-                      
-                      <div className="flex-1">
-                        <motion.div variants={itemVariants} className="mb-6">
-                          <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 bg-clip-text text-transparent mb-4">
-                            {welcomeMessage}
-                            <span className={`inline-block w-1 h-6 ml-0.5 bg-purple-600 dark:bg-purple-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
-                          </h2>
-                          
-                          {typingComplete && (
-                            <motion.p 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ duration: 0.5 }}
-                              className="text-gray-700 dark:text-gray-300"
-                            >
-                              How do you plan to use NoteSphere? (Select all that apply)
-                            </motion.p>
-                          )}
-                        </motion.div>
-                        
+                    {/* Changed layout to a centered column and removed gear animation */}
+                    <div className="flex flex-col items-center gap-8">
+                      <motion.div variants={itemVariants} className="text-center">
+                        <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 dark:from-purple-400 dark:to-indigo-400 bg-clip-text text-transparent mb-4">
+                          {welcomeMessage}
+                          <span className={`inline-block w-1 h-6 ml-0.5 bg-purple-600 dark:bg-purple-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
+                        </h2>
                         {typingComplete && (
-                          <motion.div 
-                            variants={itemVariants}
+                          <motion.p 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.5 }}
+                            className="text-gray-700 dark:text-gray-300"
                           >
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                              {USAGE_OPTIONS.map((usage) => (
-                                <motion.div
-                                  key={usage.id}
-                                  whileHover={{ scale: 1.02, y: -3 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => toggleUsage(usage)}
-                                  className={`relative cursor-pointer transition-all duration-200 rounded-xl overflow-hidden ${
-                                    selectedUsage.includes(usage.id)
-                                      ? 'bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 dark:border-purple-400 shadow-lg'
-                                      : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
-                                  }`}
-                                >
-                                  <div className="p-5 flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-lg ${usage.color} flex items-center justify-center text-white shrink-0 shadow-md`}>
-                                      {usage.icon}
-                                    </div>
-                                    <div className="flex-1">
-                                      <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
-                                        {usage.name}
-                                      </h3>
-                                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        {usage.description}
-                                      </p>
-                                    </div>
-                                    <motion.div 
-                                      animate={selectedUsage.includes(usage.id) ? {
-                                        scale: [1, 1.15, 1],
-                                        transition: { duration: 0.3 }
-                                      } : {}}
-                                      className={`w-5 h-5 rounded-full border-2 ${
-                                        selectedUsage.includes(usage.id)
-                                          ? 'bg-purple-500 border-purple-500 dark:bg-purple-500 dark:border-purple-500'
-                                          : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-500'
-                                      } flex items-center justify-center`}
-                                    >
-                                      {selectedUsage.includes(usage.id) && (
-                                        <motion.svg 
-                                          initial={{ opacity: 0, scale: 0 }}
-                                          animate={{ opacity: 1, scale: 1 }}
-                                          transition={{ type: "spring", damping: 12 }}
-                                          className="w-3 h-3 text-white" 
-                                          fill="currentColor" 
-                                          viewBox="0 0 20 20" 
-                                          xmlns="http://www.w3.org/2000/svg"
-                                        >
-                                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
-                                        </motion.svg>
-                                      )}
-                                    </motion.div>
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </div>
-                            
-                            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                              This helps us tailor the experience to your needs
-                            </p>
-                          </motion.div>
+                            How do you plan to use NoteSphere? (Select all that apply)
+                          </motion.p>
                         )}
-                      </div>
+                      </motion.div>
+                      {typingComplete && (
+                        <motion.div variants={itemVariants}>
+                          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            {USAGE_OPTIONS.map((usage) => (
+                              <motion.div
+                                key={usage.id}
+                                whileHover={{ scale: 1.02, y: -3 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => toggleUsage(usage)}
+                                className={`relative cursor-pointer transition-all duration-200 rounded-xl overflow-hidden ${
+                                  selectedUsage.includes(usage.id)
+                                    ? 'bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-500 dark:border-purple-400 shadow-lg'
+                                    : 'bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                                }`}
+                              >
+                                <div className="p-5 flex items-center gap-4">
+                                  <div className={`w-12 h-12 rounded-lg ${usage.color} flex items-center justify-center text-white shrink-0 shadow-md`}>
+                                    {usage.icon}
+                                  </div>
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                                      {usage.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                      {usage.description}
+                                    </p>
+                                  </div>
+                                  <motion.div 
+                                    animate={selectedUsage.includes(usage.id) ? {
+                                      scale: [1, 1.15, 1],
+                                      transition: { duration: 0.3 }
+                                    } : {}}
+                                    className={`w-5 h-5 rounded-full border-2 ${
+                                      selectedUsage.includes(usage.id)
+                                        ? 'bg-purple-500 border-purple-500 dark:bg-purple-500 dark:border-purple-500'
+                                        : 'bg-white border-gray-300 dark:bg-gray-700 dark:border-gray-500'
+                                    } flex items-center justify-center`}
+                                  >
+                                    {selectedUsage.includes(usage.id) && (
+                                      <motion.svg 
+                                        initial={{ opacity: 0, scale: 0 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ type: "spring", damping:  12 }}
+                                        className="w-3 h-3 text-white" 
+                                        fill="currentColor" 
+                                        viewBox="0 0 20 20" 
+                                        xmlns="http://www.w3.org/2000/svg"
+                                      >
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"></path>
+                                      </motion.svg>
+                                    )}
+                                  </motion.div>
+                                </div>
+                              </motion.div>
+                            ))}
+                          </div>
+                          <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+                            This helps us tailor the experience to your needs
+                          </p>
+                        </motion.div>
+                      )}
                     </div>
-                    
-                    <motion.div 
-                      variants={itemVariants}
-                      className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700"
-                    >
+                    <motion.div variants={itemVariants} className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                       <motion.button
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
@@ -1522,43 +1607,16 @@ function UserOnboarding() {
                         </svg>
                         Back
                       </motion.button>
-                      
                       <motion.button
                         whileHover={{ scale: 1.03, boxShadow: "0 4px 10px -2px rgba(124, 58, 237, 0.3)" }}
                         whileTap={{ scale: 0.97 }}
                         onClick={handleSubmit}
-                        disabled={loading}
-                        className="relative py-2 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-medium shadow-md transition duration-300 flex items-center overflow-hidden"
+                        className="py-2 px-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-medium shadow-md transition duration-300 flex items-center"
                       >
-                        <motion.span 
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                          animate={{ 
-                            x: ['100%', '-100%']
-                          }}
-                          transition={{ 
-                            duration: 1.5, 
-                            repeat: Infinity,
-                            repeatDelay: 1,
-                            ease: "easeInOut"
-                          }}
-                        />
-                        
-                        {loading ? (
-                          <span className="relative flex items-center">
-                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Saving...
-                          </span>
-                        ) : (
-                          <span className="relative flex items-center">
-                            Complete Setup
-                            <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                            </svg>
-                          </span>
-                        )}
+                        Complete Setup
+                        <svg className="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
                       </motion.button>
                     </motion.div>
                   </div>
@@ -1569,7 +1627,7 @@ function UserOnboarding() {
               
               {currentStep === 5 && (
                 <motion.div 
-                  key="completion"
+                  key="complete"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
@@ -1577,114 +1635,86 @@ function UserOnboarding() {
                   className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-3xl shadow-xl overflow-hidden border border-white/20 dark:border-gray-700/50"
                 >
                   <div className="p-8 md:p-12">
-                    <motion.div 
-                      variants={itemVariants}
-                      className="w-64 h-64 mx-auto mb-8"
-                      onAnimationComplete={() => {
-                        if (typingComplete) {
-                          setTimeout(() => triggerConfetti(), 500);
-                        }
-                      }}
-                    >
-                      <Lottie 
-                        animationData={successAnimation} 
-                        loop={false} 
-                        className="w-full h-full" 
-                      />
-                    </motion.div>
-                    
-                    <div className="mb-8 text-center">
-                      <motion.h2 
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <motion.div 
                         variants={itemVariants}
-                        className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent mb-6"
+                        className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0"
+                        onAnimationComplete={() => {
+                          if (typingComplete) {
+                            triggerConfetti();
+                          }
+                        }}
                       >
-                        {welcomeMessage}
-                        <span className={`inline-block w-1 h-6 ml-0.5 bg-green-500 dark:bg-green-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
-                      </motion.h2>
-                      
-                      {typingComplete && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.5 }}
-                          className="space-y-4"
-                        >
-                          <motion.p 
-                            variants={itemVariants}
-                            className="text-xl text-gray-700 dark:text-gray-300"
-                          >
-                            Thanks, {name}! Your profile has been set up successfully.
-                          </motion.p>
-                          <motion.p 
-                            variants={itemVariants}
-                            className="text-gray-600 dark:text-gray-400"
-                          >
-                            We've customized the experience based on your preferences.
-                          </motion.p>
-                        </motion.div>
-                      )}
-                    </div>
-                    
-                    {typingComplete && (
-                      <motion.div
-                        variants={itemVariants}
-                        className="flex flex-col items-center"
-                      >
-                        <motion.button
-                          whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(16, 185, 129, 0.5)" }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={handleFinish}
-                          className="relative w-full sm:w-64 py-4 px-8 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-xl font-medium shadow-lg transition duration-300 flex items-center justify-center text-lg overflow-hidden group"
-                        >
-                          <motion.span 
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                            animate={{ 
-                              x: ['100%', '-100%']
-                            }}
-                            transition={{ 
-                              duration: 1.5, 
-                              repeat: Infinity,
-                              repeatDelay: 1,
-                              ease: "easeInOut"
-                            }}
-                          />
-                          <span className="relative flex items-center">
-                            Start Using NoteSphere
-                            <svg className="w-6 h-6 ml-2 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                            </svg>
-                          </span>
-                        </motion.button>
-                        
-                        <motion.div 
-                          variants={itemVariants}
-                          className="mt-8 flex items-center justify-center gap-4 bg-white/50 dark:bg-gray-800/50 p-3 rounded-xl shadow-inner"
-                        >
-                          <motion.img 
-                            animate={{
-                              scale: [1, 1.1, 1],
-                              rotate: [0, 5, 0, -5, 0],
-                            }}
-                            transition={{
-                              duration: 3,
-                              repeat: Infinity,
-                              repeatType: "reverse"
-                            }}
-                            src={selectedAvatar.id === 10 ? customAvatar : selectedAvatar.image} 
-                            alt="Your avatar" 
-                            className="w-14 h-14 rounded-full ring-2 ring-white dark:ring-gray-700"
-                          />
-                          <div className="text-left">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Logged in as
-                            </p>
-                            <p className="font-medium text-gray-900 dark:text-white text-lg">
-                              {name}
-                            </p>
-                          </div>
-                        </motion.div>
+                        <Lottie 
+                          animationData={successAnimation} // Changed from loadingAnimation
+                          loop={false} // Success animation usually doesn't loop
+                          className="w-full h-full" 
+                        />
                       </motion.div>
-                    )}
+                      
+                      <div className="flex-1">
+                        <motion.div variants={itemVariants} className="mb-4">
+                          <h2 className="text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-500 dark:from-green-400 dark:to-emerald-400 bg-clip-text text-transparent mb-3">
+                            {welcomeMessage}
+                            <span className={`inline-block w-1 h-6 ml-0.5 bg-green-500 dark:bg-green-400 align-middle ${typingComplete ? 'opacity-0' : 'animate-blink'}`}></span>
+                          </h2>
+                          
+                          {typingComplete && (
+                            <motion.div
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.5 }}
+                            >
+                              <p className="text-xl text-gray-700 dark:text-gray-300 mb-3">
+                                Thanks, {name}! Your profile has been set up successfully.
+                              </p>
+                              <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                                <motion.div 
+                                  animate={{ 
+                                    scale: [1, 1.2, 1],
+                                    rotate: [0, 10, 0, -10, 0] 
+                                  }}
+                                  transition={{ 
+                                    duration: 1.5, 
+                                    repeat: Infinity,
+                                    repeatDelay: 2
+                                  }}
+                                >
+                                  <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                  </svg>
+                                </motion.div>
+                                <p>Redirecting you to create your first note</p>
+                              </div>
+                            </motion.div>
+                          )}
+                        </motion.div>
+                        
+                        {typingComplete && (
+                          <>
+                            <motion.div 
+                              variants={itemVariants}
+                              className="flex items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mb-6 w-full flex justify-between items-center"
+                            >
+                              <span className="text-gray-800 dark:text-gray-200">Redirecting in</span>
+                              <CountdownTimer seconds={8} onComplete={completeOnboarding} />
+                            </motion.div>
+                            
+                            <motion.button
+                              whileHover={{ scale: 1.03, boxShadow: "0 10px 25px -5px rgba(16, 185, 129, 0.5)" }}
+                              whileTap={{ scale: 0.97 }}
+                              onClick={completeOnboarding}
+                              className="py-3 px-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white rounded-lg font-medium shadow-md transition duration-300 flex items-center"
+                            >
+                              Take Me to NoteSphere
+                              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                              </svg>
+                            </motion.button>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="h-2 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>

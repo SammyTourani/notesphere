@@ -17,6 +17,7 @@ import SavePrompt from './components/SavePrompt';
 import MergeOptions from './components/MergeOptions';
 import NewNoteButton from './components/NewNoteButton';
 import FloatingThemeToggle from './components/FloatingThemeToggle';
+import UserProfile from './components/UserProfile';
 
 function App() {
   const { currentUser, isGuestMode, enableGuestMode, isNewUser } = useAuth();
@@ -51,7 +52,11 @@ function App() {
     // 2. They're marked as a new user
     // 3. They're not already on the onboarding page
     // 4. They're not in guest mode
-    if (currentUser && isNewUser && location.pathname !== '/onboarding' && !isGuestMode) {
+    // 5. They're not trying to access the profile page
+    if (currentUser && isNewUser && 
+        location.pathname !== '/onboarding' && 
+        location.pathname !== '/profile' && 
+        !isGuestMode) {
       console.log("Redirecting new user to onboarding");
       navigate('/onboarding', { replace: true });
     }
@@ -171,6 +176,13 @@ function App() {
             ) : (
               <Navigate to="/login" replace />
             )
+          } />
+          
+          {/* Profile route - accessible even for new users */}
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <UserProfile />
+            </ProtectedRoute>
           } />
           
           {/* Guest mode routes */}
