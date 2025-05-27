@@ -281,32 +281,27 @@ export function NotesProvider({ children }) {
     console.log("Saving note locally:", noteData);
     
     try {
-      // Generate a temporary ID
-      const tempId = `local-${uuidv4()}`;
-      
-      // Create the note with the temporary ID
+      const localId = `local-${uuidv4()}`;
       const localNote = {
-        id: tempId,
+        id: localId,
         ...noteData,
-        userId: currentUser?.uid,
-        created: new Date().toISOString(),
-        needsSync: true
+        created: new Date().toISOString()
       };
       
       // Get existing local notes
       const existingNotes = JSON.parse(localStorage.getItem(LOCAL_NOTES_KEY) || '[]');
       
-      // Add the new note
+      // Add new note
       const updatedNotes = [...existingNotes, localNote];
       localStorage.setItem(LOCAL_NOTES_KEY, JSON.stringify(updatedNotes));
       
       // Update state
       setNotes(prevNotes => [...prevNotes, localNote]);
       
-      return { success: true, id: tempId };
+      return { success: true, id: localId };
     } catch (err) {
       console.error("Error saving note locally:", err);
-      return { success: false, error: 'Failed to save note locally.' };
+      throw new Error('Failed to save note locally.');
     }
   };
   

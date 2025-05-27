@@ -77,13 +77,6 @@ function SingleNoteEditor() {
   }, [content, editor]);
 
   useEffect(() => {
-    const path = location.pathname;
-    if (noteId === undefined && path !== '/notes/new') {
-      navigate('/notes/new', { replace: true });
-    }
-  }, [noteId, navigate, location.pathname]);
-
-  useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -96,17 +89,6 @@ function SingleNoteEditor() {
       editor?.destroy();
     };
   }, [editor]);
-
-  useEffect(() => {
-    if (location.pathname === '/notes/new' && (noteId === 'new' || !noteId)) {
-      setTitle('');
-      setContent(''); 
-      setIsPinned(false);
-      actualNoteIdRef.current = null;
-      hasBeenSavedRef.current = false;
-      if (editor) editor.commands.clearContent(false); // Clear editor without emitting update
-    }
-  }, [location.pathname, noteId, editor]);
 
   useEffect(() => {
     if (location.pathname === '/notes/new') {
@@ -124,8 +106,14 @@ function SingleNoteEditor() {
     }
     if (noteId !== undefined) {
       loadNote();
+      
+      // FIXED: Save the last visited note immediately when loading
+      if (currentUser && noteId && noteId !== 'new') {
+        localStorage.setItem(`lastNote-${currentUser.uid}`, noteId);
+        localStorage.setItem(`lastNoteTimestamp-${currentUser.uid}`, Date.now().toString());
+      }
     }
-  }, [noteId, location.pathname]); // editor removed from deps, content state drives it
+  }, [noteId, location.pathname, currentUser]);
 
   const loadNote = async () => {
     setIsLoading(true);
@@ -153,6 +141,13 @@ function SingleNoteEditor() {
         actualNoteIdRef.current = noteId;
         hasBeenSavedRef.current = true;
         setError(null);
+        
+        // FIXED: Update last visited note after successful load
+        if (currentUser && noteId !== 'new') {
+          localStorage.setItem(`lastNote-${currentUser.uid}`, noteId);
+          localStorage.setItem(`lastNoteTimestamp-${currentUser.uid}`, Date.now().toString());
+        }
+        
         // Autofocus editor content if not a new note and editor exists
         if (editor && location.pathname !== '/notes/new') {
             setTimeout(() => editor.commands.focus('end'), 100); // Focus after content is set
@@ -172,8 +167,14 @@ function SingleNoteEditor() {
       window.history.replaceState({}, '', `/notes/${newNoteId}`);
       actualNoteIdRef.current = newNoteId;
       hasBeenSavedRef.current = true;
+      
+      // FIXED: Update last visited note when URL changes
+      if (currentUser) {
+        localStorage.setItem(`lastNote-${currentUser.uid}`, newNoteId);
+        localStorage.setItem(`lastNoteTimestamp-${currentUser.uid}`, Date.now().toString());
+      }
     }
-  }, []);
+  }, [currentUser]);
 
   const handleTitleChange = (e) => {
     const newTitle = e.target.value;
@@ -203,7 +204,12 @@ function SingleNoteEditor() {
       clearTimeout(saveTimeoutRef.current);
       const currentEditorContent = editor ? editor.getHTML() : content;
       if (title.trim() || (currentEditorContent && currentEditorContent.replace(/<[^>]+>/g, '').trim())) { 
-        const noteData = { title, content: currentEditorContent };
+        // Preserve pin status when saving on navigation
+        const noteData = { 
+          title, 
+          content: currentEditorContent,
+          pinned: isPinned  // Include current pin status
+        };
         if (!hasBeenSavedRef.current) {
           createNote(noteData)
             .then(() => navigate('/notes'))
@@ -229,7 +235,12 @@ function SingleNoteEditor() {
       try {
         isSavingRef.current = true;
         setSaveStatus('Saving...');
-        const noteData = { title: newTitle, content: newContent };
+        // Preserve the current pin status when updating
+        const noteData = { 
+          title: newTitle, 
+          content: newContent,
+          pinned: isPinned  // Include current pin status
+        };
         if (!hasBeenSavedRef.current) {
           const result = await createNote(noteData);
           if (result.success) {
@@ -249,7 +260,7 @@ function SingleNoteEditor() {
         setTimeout(() => setSaveStatus(null), 2000);
       }
     }, 800);
-  }, [createNote, updateNote, updateUrlSilently]);
+  }, [createNote, updateNote, updateUrlSilently, isPinned]); // Added isPinned to dependencies
 
   if (isLoading) {
     return (

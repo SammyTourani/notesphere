@@ -15,7 +15,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import SingleNoteEditor from './components/SingleNoteEditor';
 import SavePrompt from './components/SavePrompt';
 import MergeOptions from './components/MergeOptions';
-import NewNoteButton from './components/NewNoteButton';
 import FloatingThemeToggle from './components/FloatingThemeToggle';
 import UserProfile from './components/UserProfile';
 
@@ -204,10 +203,7 @@ function App() {
                 currentUser && isNewUser ? (
                   <Navigate to="/onboarding" replace />
                 ) : (
-                  <>
-                    <NotesList />
-                    <NewNoteButton />
-                  </>
+                  <NotesList />
                 )
               ) : (
                 <Navigate to="/login" replace />

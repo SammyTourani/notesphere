@@ -214,6 +214,24 @@ const WavingHand = () => {
   );
 };
 
+const WritingHand = () => {
+  return (
+    <motion.div
+      className="text-7xl"
+      animate={{ rotate: [0, 10, -10, 0] }}
+      transition={{
+        duration: 1.5,
+        ease: "easeInOut",
+        repeat: Infinity,
+        repeatDelay: 1
+      }}
+      style={{ originX: 0.5, originY: 0.5 }}
+    >
+      ✍️
+    </motion.div>
+  );
+};
+
 // Mouse follower cursor effect
 const CursorFollower = () => {
   const cursorRef = useRef(null);
@@ -1064,16 +1082,10 @@ function UserOnboarding() {
                     <div className="flex flex-col md:flex-row items-center gap-8">
                       <motion.div variants={itemVariants} className="w-32 h-32 md:w-40 md:h-40 flex-shrink-0 flex items-center justify-center">
                         <motion.div
-                          animate={{
-                            scale: [1, 1.05, 1],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            repeatType: "reverse"
-                          }}
+                          animate={{ scale: [1, 1.05, 1] }}
+                          transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
                         >
-                          <WavingHand />
+                          <WritingHand />
                         </motion.div>
                       </motion.div>
                       

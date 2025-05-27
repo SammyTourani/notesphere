@@ -50,6 +50,72 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('isGuestMode');
   };
 
+  // Function to create welcome notes for new users
+  const createWelcomeNotes = async (userId) => {
+    const welcomeNotes = [
+      {
+        title: "Welcome to Your Digital Mind Palace",
+        content: `<p>Every great idea starts with a single thought. This is where yours will live, grow, and flourish.</p>
+                 <p>Your thoughts deserve a beautiful home. Make yourself comfortable here.</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "The Art of Capturing Moments",
+        content: `<p>Ideas are like butterflies - beautiful, fleeting, and impossible to catch without the right tools.</p>
+                 <p>Consider this your digital butterfly net. What will you capture today?</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "Your Creative Sanctuary",
+        content: `<p>This space belongs entirely to you. No judgment, no limits, no pressure.</p>
+                 <p>Write freely. Dream boldly. Create fearlessly.</p>
+                 <p><em>Your future self will thank you for the thoughts you preserve today.</em></p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "Small Notes, Big Impact",
+        content: `<p>Sometimes the smallest notes hold the biggest breakthroughs.</p>
+                 <p>A quote that moves you. A solution that clicks. A memory worth keeping.</p>
+                 <p>What matters to you, matters here.</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      }
+    ];
+
+    try {
+      // Import the notes context functions
+      const { addDoc, collection } = await import('firebase/firestore');
+      
+      // Create each welcome note in the correct collection path
+      for (const note of welcomeNotes) {
+        await addDoc(collection(db, 'notes'), note);
+      }
+      
+      console.log('Welcome notes created successfully');
+    } catch (error) {
+      console.error('Error creating welcome notes:', error);
+    }
+  };
+
   // Function to create or update user profile
   const updateUserProfile = async (profileData) => {
     if (!currentUser) return { success: false, error: 'No authenticated user' };
@@ -75,6 +141,7 @@ export function AuthProvider({ children }) {
       const userDoc = await getDoc(userDocRef);
       
       let updatedProfile;
+      const isFirstTimeSetup = !userDoc.exists() || !userDoc.data()?.isProfileComplete;
       
       if (userDoc.exists()) {
         // Update existing profile
@@ -97,6 +164,11 @@ export function AuthProvider({ children }) {
       
       // Write to Firestore
       await setDoc(userDocRef, updatedProfile, { merge: true });
+      
+      // Create welcome notes for first-time users
+      if (isFirstTimeSetup && profileData.displayName) {
+        await createWelcomeNotes(currentUser.uid);
+      }
       
       // Update local state
       setUserProfile(updatedProfile);
