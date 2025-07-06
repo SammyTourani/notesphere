@@ -13,11 +13,14 @@ import Image from '@tiptap/extension-image';
 import TextStyle from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import Placeholder from '@tiptap/extension-placeholder';
+import { GrammarExtension } from '../extensions/GrammarExtension';
 
 import TipTapEditor from './editor/TipTapEditor';
 import EditorToolbar from './editor/EditorToolbar';
 import WordCountDisplay from './editor/WordCountDisplay';
 import PinButton from './PinButton';
+import UltimateGrammarUI from './editor/UltimateGrammarUI';
+import NoFramerGrammarButton from './editor/NoFramerGrammarButton';
 
 function SingleNoteEditor() {
   const { noteId } = useParams();
@@ -34,10 +37,26 @@ function SingleNoteEditor() {
   const [isPinned, setIsPinned] = useState(false);
   const [noteKey, setNoteKey] = useState(Date.now()); // Key to force PinButton re-render
 
+  // === GRAMMAR UI STATE ===
+  const [showGrammarUI, setShowGrammarUI] = useState(false);
+  const [grammarIssues, setGrammarIssues] = useState([]);
+
   const isSavingRef = useRef(false);
   const saveTimeoutRef = useRef(null);
   const actualNoteIdRef = useRef(noteId);
   const hasBeenSavedRef = useRef(false);
+
+  const toggleGrammarUI = useCallback(() => {
+    setShowGrammarUI(prev => !prev);
+  }, []);
+
+  const onIssuesFound = useCallback((issues) => {
+    setGrammarIssues(issues);
+  }, []);
+
+  const onIssuesUpdated = useCallback((issues) => {
+    setGrammarIssues(issues);
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -62,6 +81,10 @@ function SingleNoteEditor() {
       }),
       Placeholder.configure({
         placeholder: 'Write freely...',
+      }),
+      GrammarExtension.configure({
+        onIssuesFound,
+        onIssuesUpdated,
       })
     ],
     content: content, 
@@ -387,6 +410,22 @@ function SingleNoteEditor() {
           <WordCountDisplay editor={editor} title={title} />
         </motion.div>
       )}
+      
+      {/* Ultimate Grammar UI */}
+      <UltimateGrammarUI 
+        editor={editor}
+        isVisible={showGrammarUI}
+        onToggle={toggleGrammarUI}
+      />
+      
+      {/* No-Framer Grammar Button */}
+      <NoFramerGrammarButton 
+        isActive={showGrammarUI}
+        onClick={toggleGrammarUI}
+        issueCount={grammarIssues.length}
+        position="bottom-right"
+        size="medium"
+      />
     </motion.div>
   );
 }
