@@ -1,53 +1,29 @@
-// Grammar worker for browser-only nlprule WASM
-let checker: any = null;
+// src/grammar-worker.ts
+import init, { NlpRuleChecker } from './nlp/pkg/nlprule_wasm.js';
 
-self.onmessage = async (e: MessageEvent<string>) => {
-  if (e.data === '__init__') {
-    try {
-      // For now, create a mock checker that will be replaced with real nlprule
-      checker = {
-        check: (text: string) => {
-          // Subject-verb disagreement patterns
-          const issues = [];
-          
-          // Pattern 1: "cats is" → "cats are"
-          if (text.match(/\b(cats|dogs|people|they)\s+is\b/i)) {
-            const match = text.match(/\b(cats|dogs|people|they)\s+is\b/i)!;
-            const start = text.search(/\b(cats|dogs|people|they)\s+is\b/i);
-            issues.push({
-              message: 'Subject-verb disagreement',
-              start: start,
-              end: start + match[0].length,
-              replacements: [match[0].replace('is', 'are')]
-            });
-          }
-          
-          // Pattern 2: "This are" → "This is"  
-          if (text.match(/\b(this|that)\s+are\b/i)) {
-            const match = text.match(/\b(this|that)\s+are\b/i)!;
-            const start = text.search(/\b(this|that)\s+are\b/i);
-            issues.push({
-              message: 'Subject-verb agreement error',
-              start: start,
-              end: start + match[0].length,
-              replacements: [match[0].replace('are', 'is')]
-            });
-          }
-          
-          return issues;
-        }
-      };
+let checker: NlpRuleChecker | null = null;
+
+self.onmessage = async ({ data }) => {
+  if (data === '__init__') {
+    if (!checker) {
+      console.log('🚀 [WORKER] WASM init start...');
       
-      self.postMessage('__ready__');
-    } catch (error) {
-      self.postMessage({ error: String(error) });
+      // ① Initialize WASM with explicit URL  
+      const wasmUrl = new URL('./nlp/pkg/nlprule_wasm_bg.wasm', import.meta.url);
+      await init(wasmUrl);
+      console.log('📦 [WORKER] WASM module loaded, creating checker...');
+      
+      // ② Create checker (no deserialization needed for basic version)
+      checker = NlpRuleChecker.new();
+      console.log('✅ [WORKER] ready');
     }
-  } else {
-    try {
-      const issues = checker ? checker.check(e.data) : [];
-      self.postMessage(issues);
-    } catch (error) {
-      self.postMessage({ error: String(error) });
-    }
+    postMessage('__ready__');
+    return;
   }
+
+  if (!checker) { return postMessage({ error: 'not-ready' }); }
+  
+  // Use the check method (not check_str)
+  const result = checker.check(data);
+  postMessage(result);
 };

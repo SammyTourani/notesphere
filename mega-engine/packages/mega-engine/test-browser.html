@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grammar Engine Browser Test</title>
+</head>
+<body>
+    <h1>Grammar Engine Browser Test</h1>
+    <p>Open console to see results</p>
+    <div id="results"></div>
+
+    <script type="module">
+        import { init, check } from './dist/index.js';
+        
+        async function testGrammar() {
+            try {
+                console.log('🚀 Initializing Grammar Engine...');
+                await init({
+                    engines: {
+                        nlprule: true,
+                        hunspell: true,
+                        symspell: true,
+                        writeGood: true,
+                        retext: true
+                    }
+                });
+                
+                console.log('✅ Grammar Engine initialized');
+                
+                console.log('🧪 Testing: "The cats is hungry."');
+                const result = await check('The cats is hungry.');
+                
+                console.log('📊 Results:', result);
+                console.log('🔍 Issues found:', result.issues.length);
+                
+                const grammarIssues = result.issues.filter(i => i.category === 'grammar');
+                console.log('📝 Grammar issues:', grammarIssues);
+                
+                if (grammarIssues.length > 0) {
+                    console.log('✅ SUCCESS: Found grammar issues!');
+                    document.getElementById('results').innerHTML = `
+                        <h2>✅ SUCCESS!</h2>
+                        <p>Found ${grammarIssues.length} grammar issue(s)</p>
+                        <pre>${JSON.stringify(grammarIssues[0], null, 2)}</pre>
+                    `;
+                } else {
+                    console.log('❌ FAIL: No grammar issues found');
+                    document.getElementById('results').innerHTML = `
+                        <h2>❌ FAIL</h2>
+                        <p>No grammar issues found</p>
+                        <p>Total issues: ${result.issues.length}</p>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('❌ Test failed:', error);
+                document.getElementById('results').innerHTML = `
+                    <h2>❌ ERROR</h2>
+                    <pre>${error.message}</pre>
+                `;
+            }
+        }
+        
+        // Start test
+        testGrammar();
+    </script>
+</body>
+</html>

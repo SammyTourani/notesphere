@@ -23,7 +23,6 @@ export type {
 
 // Re-export engine classes for advanced usage
 export { MegaEngine } from './mega-engine.js';
-export { WasmGrammarEngine } from './wasm-grammar-engine.js';
 export { SpellChecker } from './spell-checker.js';
 export { StyleChecker } from './style-checker.js';
 export { SmartCache } from './cache.js';
@@ -129,43 +128,4 @@ export default {
   MegaEngine
 }
 
-// Simple API for direct usage
-import { initGrammar, grammarIssues } from './wasm-grammar-engine.js';
-import { initSpeller, spellingIssues } from './spell-checker.js';
-import { initStyle, styleIssues } from './style-checker.js';
-
-export async function initSimple() {
-  await Promise.all([
-    initGrammar().catch(e => console.warn('Grammar init failed (stubbed in Node):', e)),
-    initSpeller().catch(e => { throw new Error('Speller init failed: ' + e); }),
-    initStyle().catch(e => { throw new Error('Style init failed: ' + e); })
-  ]);
-  console.log('✅ Mega Engine initialized');
-}
-
-export async function checkSimple(text: string): Promise<any[]> {
-  const issues: any[] = [];
-  
-  try {
-    const grammarResults = await grammarIssues(text);
-    issues.push(...grammarResults);
-  } catch (error) {
-    console.warn('Grammar check failed:', error);
-  }
-  
-  try {
-    const spellingResults = await spellingIssues(text);
-    issues.push(...spellingResults);
-  } catch (error) {
-    console.warn('Spelling check failed:', error);
-  }
-  
-  try {
-    const styleResults = await styleIssues(text);
-    issues.push(...styleResults);
-  } catch (error) {
-    console.warn('Style check failed:', error);
-  }
-  
-  return issues.sort((a, b) => a.offset - b.offset);
-}
+// Simple API will be added once grammar integration is complete

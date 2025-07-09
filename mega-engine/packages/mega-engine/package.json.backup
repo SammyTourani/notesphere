@@ -1,0 +1,71 @@
+{
+  "name": "@notesphere/mega-engine",
+  "version": "1.0.0",
+  "description": "100% free, offline, production-ready grammar, spelling, and style checking engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist/",
+    "public/"
+  ],
+  "scripts": {
+    "build": "tsc && node scripts/copy-wasm.mjs",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "grammar",
+    "spelling",
+    "style",
+    "checker",
+    "offline",
+    "typescript",
+    "wasm",
+    "nlprule",
+    "hunspell",
+    "symspell"
+  ],
+  "author": "NoteSphere",
+  "license": "MIT",
+  "packageManager": "pnpm@10.12.4",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "@vitest/browser": "^3.2.4",
+    "@vitest/ui": "^3.2.4",
+    "playwright": "^1.53.2",
+    "typescript": "^5.8.3",
+    "vite-plugin-static-copy": "^3.1.0",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "node-symspell": "^0.1.0",
+    "retext": "^9.0.0",
+    "retext-equality": "^7.0.0",
+    "retext-profanities": "^8.0.0",
+    "retext-readability": "^8.0.0",
+    "retext-simplify": "^8.0.0",
+    "retext-spell": "^6.0.0",
+    "symspell-ex": "^1.1.10",
+    "unified": "^11.0.0",
+    "uuid": "^11.1.0",
+    "vfile": "^6.0.0",
+    "write-good": "^1.0.8"
+  },
+  "peerDependencies": {
+    "hunspell-asm": "^1.0.2"
+  },
+  "browserslist": [
+    "defaults",
+    "not IE 11"
+  ]
+}

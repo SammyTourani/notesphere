@@ -11,5 +11,9 @@ export default defineConfig({
   },
   worker: {
     format: 'es'
+  },
+  assetsInclude: ['**/*.wasm', '**/*.bin'],
+  optimizeDeps: {
+    exclude: ['nlprule_wasm.js']
   }
 });

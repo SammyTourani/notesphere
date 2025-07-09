@@ -17,7 +17,9 @@
   ],
   "scripts": {
     "build": "tsc && node scripts/copy-wasm.mjs",
-    "test": "vitest",
+    "test": "pnpm run test:node && pnpm run test:browser",
+    "test:node": "vitest run --config vitest.node.config.ts",
+    "test:browser": "vitest run --config vitest.browser.config.ts --browser",
     "test:ui": "vitest --ui",
     "dev": "tsc --watch",
     "clean": "rm -rf dist"
@@ -40,8 +42,11 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/uuid": "^10.0.0",
+    "@vitest/browser": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "playwright": "^1.53.2",
     "typescript": "^5.8.3",
+    "vite-plugin-static-copy": "^3.1.0",
     "vitest": "^3.2.4"
   },
   "dependencies": {
