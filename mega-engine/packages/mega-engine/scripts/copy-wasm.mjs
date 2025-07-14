@@ -1,7 +1,7 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const srcDir = 'nlp/pkg';
+const srcDir = 'src/nlp/pkg';
 const outDir = 'dist/nlp/pkg';
 
 await fsp.mkdir(outDir, { recursive: true });
