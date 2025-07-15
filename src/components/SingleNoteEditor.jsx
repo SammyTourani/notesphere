@@ -19,8 +19,7 @@ import TipTapEditor from './editor/TipTapEditor';
 import EditorToolbar from './editor/EditorToolbar';
 import WordCountDisplay from './editor/WordCountDisplay';
 import PinButton from './PinButton';
-import UltimateGrammarUI from './editor/UltimateGrammarUI';
-import NoFramerGrammarButton from './editor/NoFramerGrammarButton';
+import AdvancedGrammarInsights from './editor/AdvancedGrammarInsights';
 
 function SingleNoteEditor() {
   const { noteId } = useParams();
@@ -36,27 +35,12 @@ function SingleNoteEditor() {
   const [error, setError] = useState(null);
   const [isPinned, setIsPinned] = useState(false);
   const [noteKey, setNoteKey] = useState(Date.now()); // Key to force PinButton re-render
-
-  // === GRAMMAR UI STATE ===
-  const [showGrammarUI, setShowGrammarUI] = useState(false);
-  const [grammarIssues, setGrammarIssues] = useState([]);
+  const [isGrammarSidebarVisible, setIsGrammarSidebarVisible] = useState(false);
 
   const isSavingRef = useRef(false);
   const saveTimeoutRef = useRef(null);
   const actualNoteIdRef = useRef(noteId);
   const hasBeenSavedRef = useRef(false);
-
-  const toggleGrammarUI = useCallback(() => {
-    setShowGrammarUI(prev => !prev);
-  }, []);
-
-  const onIssuesFound = useCallback((issues) => {
-    setGrammarIssues(issues);
-  }, []);
-
-  const onIssuesUpdated = useCallback((issues) => {
-    setGrammarIssues(issues);
-  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -82,10 +66,7 @@ function SingleNoteEditor() {
       Placeholder.configure({
         placeholder: 'Write freely...',
       }),
-      GrammarExtension.configure({
-        onIssuesFound,
-        onIssuesUpdated,
-      })
+      GrammarExtension
     ],
     content: content, 
     onUpdate: ({ editor: updatedEditor }) => {
@@ -354,9 +335,72 @@ function SingleNoteEditor() {
             )}
           </div>
         </motion.div>
+        
+        {/* Premium Grammar Toggle Button - Bottom Right */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.4, type: "spring" }}
+          className="fixed bottom-8 right-8 z-50"
+        >
+          <motion.button
+            onClick={() => setIsGrammarSidebarVisible(!isGrammarSidebarVisible)}
+            className={`
+              group relative w-16 h-16 rounded-2xl font-medium transition-all duration-300 shadow-2xl
+              ${isGrammarSidebarVisible 
+                ? 'bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 text-white ring-4 ring-blue-200 dark:ring-blue-800' 
+                : 'bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 text-gray-700 dark:text-gray-300 hover:from-blue-50 hover:to-purple-50 dark:hover:from-gray-700 dark:hover:to-gray-600 ring-2 ring-gray-200 dark:ring-gray-600 hover:ring-blue-300 dark:hover:ring-blue-500'
+              }
+              backdrop-blur-xl border border-white/20 dark:border-gray-700/50
+            `}
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {/* Premium Icon */}
+            <div className="flex items-center justify-center h-full">
+              {isGrammarSidebarVisible ? (
+                <motion.div
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 180 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </motion.div>
+              ) : (
+                <motion.div
+                  initial={{ rotate: 180 }}
+                  animate={{ rotate: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="relative"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {/* Active indicator */}
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full animate-pulse shadow-lg" />
+                </motion.div>
+              )}
+            </div>
+            
+            {/* Elegant Tooltip */}
+            <div className="absolute bottom-20 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              <div className="bg-gray-900 dark:bg-gray-700 text-white text-sm px-3 py-2 rounded-lg shadow-xl whitespace-nowrap">
+                {isGrammarSidebarVisible ? 'Close Assistant' : 'Grammar Assistant'}
+                <div className="absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900 dark:border-t-gray-700" />
+              </div>
+            </div>
+          </motion.button>
+        </motion.div>
       </div>
 
-      <div className="flex-grow flex justify-center pt-16 px-4 overflow-y-auto pb-24">
+      <motion.div 
+        className="flex-grow flex justify-center pt-16 px-4 overflow-y-auto pb-24 transition-all duration-300 ease-in-out"
+        animate={{
+          marginRight: isGrammarSidebarVisible ? '500px' : '0px'
+        }}
+      >
         <div className="w-full max-w-2xl note-content">
           <div className="flex items-center justify-between mb-2">
             <motion.input
@@ -397,7 +441,7 @@ function SingleNoteEditor() {
             {editor && <TipTapEditor editor={editor} />} 
           </motion.div>
         </div>
-      </div>
+      </motion.div>
       
       {editor && ( 
         <motion.div
@@ -411,21 +455,17 @@ function SingleNoteEditor() {
         </motion.div>
       )}
       
-      {/* Ultimate Grammar UI */}
-      <UltimateGrammarUI 
+      {/* Advanced Grammar Insights Dashboard */}
+      <div className="fixed right-0 top-0 h-full z-40">
+        <AdvancedGrammarInsights 
         editor={editor}
-        isVisible={showGrammarUI}
-        onToggle={toggleGrammarUI}
-      />
-      
-      {/* No-Framer Grammar Button */}
-      <NoFramerGrammarButton 
-        isActive={showGrammarUI}
-        onClick={toggleGrammarUI}
-        issueCount={grammarIssues.length}
-        position="bottom-right"
-        size="medium"
-      />
+          content={content}
+          isVisible={isGrammarSidebarVisible}
+          onToggle={() => setIsGrammarSidebarVisible(false)}
+          onOpen={() => setIsGrammarSidebarVisible(true)}
+          onContentUpdate={handleContentChange}
+        />
+      </div>
     </motion.div>
   );
 }

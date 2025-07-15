@@ -19,7 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createCommandBasedReplacer } from '../../services/CommandBasedReplacer';
-import grammarService from '../../services/grammarService';
+import advancedGrammarService from '../../services/AdvancedGrammarService';
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -151,10 +151,10 @@ const UltimateGrammarUI = ({ editor, isVisible, onToggle }) => {
         return;
       }
 
-      console.log('🔍 UltimateGrammarUI: Checking grammar for content:', content.substring(0, 50) + '...');
+      console.log('🔍 UltimateGrammarUI: Checking grammar with nlprule WASM pattern recognition:', content.substring(0, 50) + '...');
       
-      // Use real grammar service
-      const grammarIssues = await grammarService.checkText(content);
+      // Use advanced nlprule WASM grammar service for sophisticated pattern recognition
+      const grammarIssues = await advancedGrammarService.checkText(content);
       
       // Transform grammar service issues to match UI format but preserve positioning data
       const transformedIssues = grammarIssues.map(issue => ({

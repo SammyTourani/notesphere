@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📝 Grammar Highlighting Test - Precise Character Mapping</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            margin: 20px 0;
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .test-area {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        
+        .instructions {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+        
+        .debug-info {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: #2f855a;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .status.error {
+            background: #fed7d7;
+            color: #c53030;
+            border: 1px solid #feb2b2;
+        }
+        
+        .status.warning {
+            background: #fefcbf;
+            color: #d69e2e;
+            border: 1px solid #faf089;
+        }
+        
+        .test-sentence {
+            background: #edf2f7;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin: 15px 0;
+            font-style: italic;
+            font-size: 18px;
+        }
+        
+        /* Grammar highlighting styles for testing */
+        .grammar-error-spelling {
+            border-bottom: 3px wavy #ef4444;
+            cursor: pointer;
+            transition: border-bottom-color 0.2s ease;
+        }
+        .grammar-error-spelling:hover {
+            border-bottom-color: #dc2626;
+        }
+        
+        .grammar-error-grammar {
+            border-bottom: 3px wavy #3b82f6;
+            cursor: pointer;
+            transition: border-bottom-color 0.2s ease;
+        }
+        .grammar-error-grammar:hover {
+            border-bottom-color: #2563eb;
+        }
+        
+        .grammar-error-style {
+            border-bottom: 3px wavy #9333ea;
+            cursor: pointer;
+            transition: border-bottom-color 0.2s ease;
+        }
+        .grammar-error-style:hover {
+            border-bottom-color: #7c3aed;
+        }
+        
+        .grammar-error-punctuation {
+            border-bottom: 3px wavy #f59e0b;
+            cursor: pointer;
+            transition: border-bottom-color 0.2s ease;
+        }
+        .grammar-error-punctuation:hover {
+            border-bottom-color: #d97706;
+        }
+        
+        .grammar-error-word_choice {
+            border-bottom: 3px wavy #22c55e;
+            cursor: pointer;
+            transition: border-bottom-color 0.2s ease;
+        }
+        .grammar-error-word_choice:hover {
+            border-bottom-color: #16a34a;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: transform 0.2s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .expected-results {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .expected-results h3 {
+            color: #2f855a;
+            margin-top: 0;
+        }
+        
+        .underline-demo {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f7fafc;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Grammar Highlighting Test</h1>
+        <p class="subtitle">Testing precise character mapping and underline-only highlighting</p>
+        
+        <div class="instructions">
+            <h3>🧪 Test Instructions</h3>
+            <ol>
+                <li>Copy the test sentence below and paste it into your NoteSphere editor</li>
+                <li>Open the Grammar Assistant (floating button or Ctrl+G)</li>
+                <li>Observe the colored wavy underlines on grammar errors</li>
+                <li>Click on any underlined word to open Grammar Assistant and navigate to that issue</li>
+                <li>Check the console for detailed debugging information</li>
+            </ol>
+        </div>
+        
+        <div class="test-sentence">
+            This are a example off a sentence, that have many mistake and it's not write very good, also the quick brown fox jump over the lazy dog but their was no reason for it, its raining cats and dogs, i dont know why.
+        </div>
+        
+        <div class="expected-results">
+            <h3>🎯 Expected Underlined Errors</h3>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">This are</span> (blue) - should be "these are"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">a example</span> (blue) - should be "an example" 
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">off a</span> (blue) - should be "of a"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">that have</span> (blue) - should be "that has"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-word_choice">write very</span> (green) - should be "written very"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-style">very good</span> (purple) - should be "excellent"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">it jump</span> (blue) - should be "it jumps"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">their was</span> (blue) - should be "there was"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-grammar">its raining</span> (blue) - should be "it's raining"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-punctuation">i</span> (orange) - should be "I"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-spelling">dont</span> (red) - should be "don't"
+            </div>
+            <div class="underline-demo">
+                <span class="grammar-error-word_choice">no why</span> (green) - should be "know why"
+            </div>
+        </div>
+        
+        <div class="status warning">
+            <strong>⚠️ Key Issues Fixed:</strong>
+            <ul>
+                <li>✅ Removed background highlighting - now only underlines</li>
+                <li>✅ Fixed character position mapping using document traversal</li>
+                <li>✅ Added precise pattern matching with word boundaries</li>
+                <li>✅ Implemented click-to-navigate functionality</li>
+                <li>✅ Enhanced grammar rules for better error detection</li>
+            </ul>
+        </div>
+        
+        <div id="debugInfo" class="debug-info">
+Console debugging will appear here when you use the editor...
+        </div>
+        
+        <button class="btn" onclick="clearDebug()">Clear Debug Info</button>
+        <button class="btn" onclick="runDiagnostics()">Run Diagnostics</button>
+    </div>
+
+    <script>
+        // Enhanced debug logging
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        const originalConsoleWarn = console.warn;
+        
+        const debugInfo = document.getElementById('debugInfo');
+        
+        function addToDebug(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'warn' ? '⚠️' : '📝';
+            debugInfo.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            debugInfo.scrollTop = debugInfo.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            if (args[0] && (args[0].includes('Grammar') || args[0].includes('🎯') || args[0].includes('🔍') || args[0].includes('✅') || args[0].includes('📝') || args[0].includes('🎨'))) {
+                addToDebug(args.join(' '), 'log');
+            }
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            addToDebug(args.join(' '), 'error');
+        };
+        
+        console.warn = function(...args) {
+            originalConsoleWarn.apply(console, args);
+            addToDebug(args.join(' '), 'warn');
+        };
+        
+        function clearDebug() {
+            debugInfo.textContent = 'Debug info cleared...\n';
+        }
+        
+        function runDiagnostics() {
+            addToDebug('🔧 Running Grammar System Diagnostics...', 'log');
+            addToDebug('✅ Test page loaded successfully', 'log');
+            addToDebug('✅ Debug console is capturing grammar logs', 'log');
+            addToDebug('📋 Copy the test sentence and paste into NoteSphere editor', 'log');
+            addToDebug('🎯 Look for colored wavy underlines on grammar errors', 'log');
+            addToDebug('🖱️ Click underlined words to test navigation', 'log');
+        }
+        
+        // Initial diagnostics
+        runDiagnostics();
+    </script>
+</body>
+</html> 

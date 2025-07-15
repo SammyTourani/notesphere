@@ -1,7 +1,7 @@
 // src/grammar-worker.ts
 import init, { NlpRuleChecker } from './nlp/pkg/nlprule_wasm.js';
 
-let checker: NlpRuleChecker | null = null;
+let checker: any | null = null;
 
 self.onmessage = async ({ data }) => {
   if (data === '__init__') {
@@ -13,9 +13,9 @@ self.onmessage = async ({ data }) => {
       await init(wasmUrl);
       console.log('📦 [WORKER] WASM module loaded, creating checker...');
       
-      // ② Create checker (no deserialization needed for basic version)
+      // ② Create checker (this is the basic version without custom rules)
       checker = NlpRuleChecker.new();
-      console.log('✅ [WORKER] ready');
+      console.log('✅ [WORKER] ready with basic nlprule rules');
     }
     postMessage('__ready__');
     return;

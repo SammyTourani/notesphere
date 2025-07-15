@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import grammarService from '../../services/grammarService';
+import advancedGrammarService from '../../services/AdvancedGrammarService';
 
 const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,7 +24,7 @@ const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
   const handleGrammarCheck = async (text, editorView) => {
     setIsChecking(true);
     try {
-      const issues = await grammarService.checkText(text);
+      const issues = await advancedGrammarService.checkText(text);
       setGrammarIssues(issues);
       
       // Update editor with grammar issues
@@ -57,7 +57,7 @@ const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
       
       // Trigger content update callback
       if (onSuggestionApply) {
-        const newContent = grammarService.applySuggestion(content, issue, suggestion);
+        const newContent = advancedGrammarService.applySuggestion(content, issue, suggestion);
         onSuggestionApply(newContent);
       }
     }

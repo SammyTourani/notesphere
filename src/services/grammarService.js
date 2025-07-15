@@ -1,3 +1,6 @@
+import { simpleGrammarRules } from './SimpleGrammarRules.js';
+import addCustomGrammarIssues from './CustomGrammarRules.js';
+
 class GrammarService {
     constructor() {
       this.apiUrl = 'https://api.languagetool.org/v2/check';
@@ -49,18 +52,29 @@ class GrammarService {
   
         const data = await response.json();
         const processedMatches = this.processMatches(data.matches, text);
+
+        // Add simple grammar rules to catch what LanguageTool misses
+        const simpleGrammarIssues = simpleGrammarRules.checkGrammar(cleanText);
+        let allIssues = [...processedMatches, ...simpleGrammarIssues];
+
+        // === Add custom rules (capitalization, punctuation, contractions, confusion) ===
+        allIssues = addCustomGrammarIssues(cleanText, allIssues);
   
         // Cache the results
         this.cache.set(cacheKey, {
-          data: processedMatches,
+          data: allIssues,
           timestamp: Date.now()
         });
   
-        return processedMatches;
+        return allIssues;
       } catch (error) {
         console.warn('Grammar check failed:', error);
-        // Return local basic checks as fallback
-        return this.basicLocalCheck(cleanText);
+        // Return enhanced local checks as fallback
+        const basicIssues = this.basicLocalCheck(cleanText);
+        const simpleGrammarIssues = simpleGrammarRules.checkGrammar(cleanText);
+        let allIssues = [...basicIssues, ...simpleGrammarIssues];
+        allIssues = addCustomGrammarIssues(cleanText, allIssues);
+        return allIssues;
       }
     }
   

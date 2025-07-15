@@ -6,7 +6,6 @@ import type { Issue, StyleAnalysis, InitOptions } from './types.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class StyleChecker {
-  private writeGood: any = null;
   private retextProcessor: any = null;
   private isInitialized = false;
   private options: InitOptions = {};
@@ -23,10 +22,7 @@ export class StyleChecker {
     try {
       console.log('🔄 Initializing Style Checker...');
 
-      // Initialize write-good
-      await this._initializeWriteGood();
-
-      // Initialize retext processor
+      // Initialize retext processor (optional)
       await this._initializeRetext();
 
       this.isInitialized = true;
@@ -49,13 +45,11 @@ export class StyleChecker {
 
     const issues: Issue[] = [];
 
-    // Check with write-good
-    if (this.writeGood) {
-      const writeGoodIssues = this._checkWithWriteGood(text);
-      issues.push(...writeGoodIssues);
-    }
+    // Use our own comprehensive style checking instead of broken write-good
+    const styleIssues = this._checkComprehensiveStyle(text);
+    issues.push(...styleIssues);
 
-    // Check with retext
+    // Check with retext (if available)
     if (this.retextProcessor) {
       const retextIssues = await this._checkWithRetext(text);
       issues.push(...retextIssues);
@@ -86,18 +80,7 @@ export class StyleChecker {
     };
   }
 
-  /**
-   * Initialize write-good
-   */
-  private async _initializeWriteGood(): Promise<void> {
-    try {
-      const writeGoodModule = await import('write-good') as any;
-      this.writeGood = writeGoodModule.default || writeGoodModule;
-      console.log('✅ write-good initialized');
-    } catch (error) {
-      console.warn('⚠️ write-good not available:', error);
-    }
-  }
+
 
   /**
    * Initialize retext processor with plugins
@@ -115,39 +98,154 @@ export class StyleChecker {
   }
 
   /**
-   * Check text with write-good
+   * Comprehensive style checking (replaces broken write-good)
    */
-  private _checkWithWriteGood(text: string): Issue[] {
-    if (!this.writeGood) return [];
+  private _checkComprehensiveStyle(text: string): Issue[] {
+    const issues: Issue[] = [];
 
-    try {
-      const suggestions = this.writeGood(text);
-      
-      return suggestions.map((suggestion: any) => ({
+    // 1. Passive voice detection
+    const passivePatterns = [
+      /\b(was|were|is|are|been|being)\s+\w+ed\b/gi,
+      /\b(was|were|is|are|been|being)\s+\w+en\b/gi
+    ];
+
+    passivePatterns.forEach(pattern => {
+      const matches = text.matchAll(pattern);
+      for (const match of matches) {
+        issues.push({
         id: uuidv4(),
-        message: suggestion.reason,
-        shortMessage: 'Style',
-        offset: suggestion.index,
-        length: suggestion.offset,
-        category: this._categorizeWriteGoodIssue(suggestion.reason),
+          message: 'Consider using active voice instead of passive voice',
+          shortMessage: 'Passive Voice',
+          offset: match.index || 0,
+          length: match[0].length,
+          category: 'style',
         severity: 'info' as const,
         priority: 5,
         suggestions: [],
         rule: {
-          id: 'WRITE_GOOD',
-          description: suggestion.reason
+            id: 'PASSIVE_VOICE',
+            description: 'Passive voice can make writing less direct and engaging'
+          },
+          context: {
+            text: match[0],
+            offset: match.index || 0,
+            length: match[0].length
+          },
+          source: 'style-checker'
+        });
+      }
+    });
+
+    // 2. Redundant phrases
+    const redundantPhrases = [
+      { phrase: 'very unique', replacement: 'unique' },
+      { phrase: 'completely unique', replacement: 'unique' },
+      { phrase: 'most unique', replacement: 'unique' },
+      { phrase: 'free gift', replacement: 'gift' },
+      { phrase: 'end result', replacement: 'result' },
+      { phrase: 'final outcome', replacement: 'outcome' },
+      { phrase: 'past history', replacement: 'history' },
+      { phrase: 'advance planning', replacement: 'planning' },
+      { phrase: 'future plans', replacement: 'plans' },
+      { phrase: 'in my opinion, I think', replacement: 'I think' },
+      { phrase: 'I personally believe', replacement: 'I believe' }
+    ];
+
+    redundantPhrases.forEach(({ phrase, replacement }) => {
+      const regex = new RegExp(phrase, 'gi');
+      const matches = text.matchAll(regex);
+      for (const match of matches) {
+        issues.push({
+          id: uuidv4(),
+          message: `"${phrase}" is redundant - consider using "${replacement}"`,
+          shortMessage: 'Redundancy',
+          offset: match.index || 0,
+          length: match[0].length,
+          category: 'style',
+          severity: 'info' as const,
+          priority: 4,
+          suggestions: [replacement],
+          rule: {
+            id: 'REDUNDANT_PHRASE',
+            description: 'Avoid redundant phrases for clearer writing'
+          },
+          context: {
+            text: match[0],
+            offset: match.index || 0,
+            length: match[0].length
+          },
+          source: 'style-checker'
+        });
+      }
+    });
+
+    // 3. Weak words and phrases
+    const weakPhrases = [
+      'really', 'very', 'quite', 'rather', 'somewhat', 'pretty much',
+      'sort of', 'kind of', 'a bit', 'a little', 'fairly'
+    ];
+
+    weakPhrases.forEach(phrase => {
+      const regex = new RegExp(`\\b${phrase}\\b`, 'gi');
+      const matches = text.matchAll(regex);
+      for (const match of matches) {
+        issues.push({
+          id: uuidv4(),
+          message: `"${phrase}" is a weak modifier - consider removing or using a stronger word`,
+          shortMessage: 'Weak Word',
+          offset: match.index || 0,
+          length: match[0].length,
+          category: 'style',
+          severity: 'info' as const,
+          priority: 6,
+          suggestions: [],
+          rule: {
+            id: 'WEAK_WORD',
+            description: 'Weak words can make writing less impactful'
+          },
+          context: {
+            text: match[0],
+            offset: match.index || 0,
+            length: match[0].length
+          },
+          source: 'style-checker'
+        });
+      }
+    });
+
+    // 4. Long sentences
+    const sentences = this._splitIntoSentences(text);
+    let currentOffset = 0;
+    
+    sentences.forEach(sentence => {
+      const words = this._splitIntoWords(sentence);
+      if (words.length > 25) {
+        issues.push({
+          id: uuidv4(),
+          message: `This sentence is ${words.length} words long - consider breaking it into shorter sentences`,
+          shortMessage: 'Long Sentence',
+          offset: currentOffset,
+          length: sentence.length,
+          category: 'clarity',
+          severity: 'info' as const,
+          priority: 4,
+          suggestions: [],
+          rule: {
+            id: 'LONG_SENTENCE',
+            description: 'Long sentences can be difficult to read'
         },
         context: {
-          text: this._getContext(text, suggestion.index, suggestion.offset),
-          offset: Math.max(0, suggestion.index - 20),
-          length: Math.min(text.length, suggestion.offset + 40)
+            text: sentence.substring(0, 50) + (sentence.length > 50 ? '...' : ''),
+            offset: currentOffset,
+            length: sentence.length
         },
-        source: 'write-good'
-      }));
-    } catch (error) {
-      console.warn('write-good check failed:', error);
-      return [];
-    }
+          source: 'style-checker'
+        });
+      }
+      currentOffset += sentence.length + 1; // +1 for sentence separator
+    });
+
+    return issues;
   }
 
   /**
@@ -249,20 +347,7 @@ export class StyleChecker {
     return suggestions;
   }
 
-  /**
-   * Categorize write-good issues
-   */
-  private _categorizeWriteGoodIssue(reason: string): 'clarity' | 'style' | 'readability' {
-    const lowerReason = reason.toLowerCase();
-    
-    if (lowerReason.includes('passive') || lowerReason.includes('wordy')) {
-      return 'clarity';
-    }
-    if (lowerReason.includes('readability') || lowerReason.includes('complex')) {
-      return 'readability';
-    }
-    return 'style';
-  }
+
 
   /**
    * Categorize retext issues
@@ -339,7 +424,7 @@ export class StyleChecker {
   getStatus() {
     return {
       isInitialized: this.isInitialized,
-      hasWriteGood: this.writeGood !== null,
+      hasComprehensiveStyleChecker: true,
       hasRetext: this.retextProcessor !== null
     };
   }
@@ -348,7 +433,6 @@ export class StyleChecker {
    * Dispose of resources
    */
   dispose(): void {
-    this.writeGood = null;
     this.retextProcessor = null;
     this.isInitialized = false;
     console.log('🗑️ Style Checker disposed');
