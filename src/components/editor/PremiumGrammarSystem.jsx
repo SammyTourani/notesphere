@@ -17,7 +17,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { AnimatePresence } from 'framer-motion';
 import FloatingGrammarButton from './FloatingGrammarButton';
 import MinimalistGrammarPanel from './MinimalistGrammarPanel';
-import advancedGrammarService from '../../services/AdvancedGrammarService';
+import AdvancedGrammarService from '../../services/AdvancedGrammarService';
+
+// Create instance of AdvancedGrammarService
+const advancedGrammarService = new AdvancedGrammarService();
 
 const PremiumGrammarSystem = ({ 
   editor, 

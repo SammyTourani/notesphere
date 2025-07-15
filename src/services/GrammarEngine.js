@@ -1,15 +1,22 @@
 /**
  * 🚀 NoteSphere Grammar Pro - Ultimate Grammar Engine
- * The world's most advanced grammar checking system
+ * PRIVACY-COMPLIANT VERSION - 100% Offline
  * 
  * Features:
  * - Multi-layer caching system
  * - Incremental checking
- * - AI-powered writing analysis
+ * - Advanced pattern recognition
  * - Context-aware suggestions
  * - Performance optimizations
  * - Advanced error categorization
+ * - ZERO external API calls
  */
+
+// Import the privacy-safe AdvancedGrammarService
+import AdvancedGrammarService from './AdvancedGrammarService.js';
+
+// Create instance of AdvancedGrammarService
+const advancedGrammarService = new AdvancedGrammarService();
 
 // Browser-compatible EventEmitter
 class EventEmitter {
@@ -70,727 +77,234 @@ class EventEmitter {
   }
 }
 
-// Constants for optimal performance
-const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-const DEBOUNCE_TIME = 1500; // 1.5 seconds
-const MIN_CHECK_LENGTH = 10; // Minimum characters to check
-const MAX_CACHE_SIZE = 1000; // Maximum cache entries
-const API_TIMEOUT = 10000; // 10 seconds timeout
+// Constants
+const DEBOUNCE_TIME = 300;
+const MIN_CHECK_LENGTH = 5;
+const API_TIMEOUT = 30000; // Not used anymore, but kept for compatibility
 
-// Grammar categories with enhanced metadata
-const GRAMMAR_CATEGORIES = {
-  spelling: {
-    id: 'spelling',
-    name: 'Spelling',
-    icon: '🔤',
-    color: '#ef4444',
-    bgColor: 'rgba(239, 68, 68, 0.1)',
-    priority: 5,
-    description: 'Misspelled words and typos',
-    underlineStyle: '2px wavy #ef4444',
-    animationClass: 'grammar-pulse-red'
-  },
+// Grammar categories for consistency
+export const GRAMMAR_CATEGORIES = {
   grammar: {
     id: 'grammar',
     name: 'Grammar',
-    icon: '📝',
-    color: '#f59e0b',
-    bgColor: 'rgba(245, 158, 11, 0.1)',
-    priority: 4,
-    description: 'Grammar rules and sentence structure',
-    underlineStyle: '2px wavy #f59e0b',
-    animationClass: 'grammar-pulse-orange'
+    color: '#ef4444',
+    icon: '⚠️',
+    description: 'Grammar and syntax errors'
   },
-  punctuation: {
-    id: 'punctuation',
-    name: 'Punctuation',
-    icon: '❗',
-    color: '#eab308',
-    bgColor: 'rgba(234, 179, 8, 0.1)',
-    priority: 3,
-    description: 'Punctuation and formatting issues',
-    underlineStyle: '1px wavy #eab308',
-    animationClass: 'grammar-pulse-yellow'
+  spelling: {
+    id: 'spelling',
+    name: 'Spelling',
+    color: '#f59e0b',
+    icon: '🔤',
+    description: 'Spelling mistakes'
   },
   style: {
     id: 'style',
     name: 'Style',
-    icon: '✨',
-    color: '#3b82f6',
-    bgColor: 'rgba(59, 130, 246, 0.1)',
-    priority: 2,
-    description: 'Writing style improvements',
-    underlineStyle: '1px dotted #3b82f6',
-    animationClass: 'grammar-fade-blue'
-  },
-  clarity: {
-    id: 'clarity',
-    name: 'Clarity',
-    icon: '💡',
     color: '#8b5cf6',
-    bgColor: 'rgba(139, 92, 246, 0.1)',
-    priority: 1,
-    description: 'Clarity and readability suggestions',
-    underlineStyle: '1px dotted #8b5cf6',
-    animationClass: 'grammar-fade-purple'
-  }
-};
-
-// Writing contexts for intelligent checking
-const WRITING_CONTEXTS = {
-  academic: {
-    name: 'Academic',
-    rules: {
-      preferFormalTone: true,
-      avoidContractions: true,
-      requireCitations: false,
-      complexSentencesOk: true,
-      passiveVoiceOk: true
-    }
+    icon: '✨',
+    description: 'Style and clarity improvements'
   },
-  business: {
-    name: 'Business',
-    rules: {
-      preferActiveTone: true,
-      conciseness: true,
-      professionalTone: true,
-      actionOriented: true,
-      avoidJargon: true
-    }
-  },
-  creative: {
-    name: 'Creative',
-    rules: {
-      allowStyleVariations: true,
-      encourageMetaphors: true,
-      flexiblePunctuation: true,
-      emotionalLanguageOk: true,
-      fragmentsOk: true
-    }
-  },
-  casual: {
-    name: 'Casual',
-    rules: {
-      contractionsOk: true,
-      informalToneOk: true,
-      colloquialismsOk: true,
-      shortSentencesPreferred: true
-    }
+  punctuation: {
+    id: 'punctuation',
+    name: 'Punctuation',
+    color: '#06b6d4',
+    icon: '❗',
+    description: 'Punctuation errors'
   }
 };
 
 /**
- * Advanced Cache Manager with intelligent invalidation
+ * Smart Cache Manager for grammar results
  */
 class SmartCacheManager {
-  constructor() {
-    this.memoryCache = new Map();
-    this.persistentCache = new Map();
-    this.frequencyMap = new Map();
-    this.lastCleanup = Date.now();
-    this.cleanupInterval = 10 * 60 * 1000; // 10 minutes
+  constructor(maxSize = 100) {
+    this.cache = new Map();
+    this.maxSize = maxSize;
+    this.accessTimes = new Map();
   }
 
-  /**
-   * Generate cache key with context
-   */
-  generateKey(text, options = {}) {
-    const cleanText = text.trim().toLowerCase();
-    const optionsKey = JSON.stringify({
-      language: options.language || 'en-US',
-      context: options.context || 'general',
-      strictMode: options.strictMode || false
-    });
-    return `${cleanText.length}:${this.hashCode(cleanText)}:${this.hashCode(optionsKey)}`;
-  }
-
-  /**
-   * Simple hash function for cache keys
-   */
-  hashCode(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    return hash.toString(36);
-  }
-
-  /**
-   * Get cached result with frequency tracking
-   */
   get(text, options = {}) {
     const key = this.generateKey(text, options);
+    const cached = this.cache.get(key);
     
-    // Check memory cache first (fastest)
-    if (this.memoryCache.has(key)) {
-      const cached = this.memoryCache.get(key);
-      if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
-        this.updateFrequency(key);
+    if (cached && Date.now() - cached.timestamp < 300000) { // 5 minutes
+      this.accessTimes.set(key, Date.now());
         return cached.data;
-      } else {
-        this.memoryCache.delete(key);
-      }
-    }
-
-    // Check persistent cache
-    if (this.persistentCache.has(key)) {
-      const cached = this.persistentCache.get(key);
-      if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
-        // Promote to memory cache
-        this.memoryCache.set(key, cached);
-        this.updateFrequency(key);
-        return cached.data;
-      } else {
-        this.persistentCache.delete(key);
-      }
     }
 
     return null;
   }
 
-  /**
-   * Set cache with intelligent storage
-   */
   set(text, data, options = {}) {
     const key = this.generateKey(text, options);
-    const cacheEntry = {
-      data,
-      timestamp: Date.now(),
-      accessCount: 1
-    };
-
-    // Always store in memory cache
-    this.memoryCache.set(key, cacheEntry);
     
-    // Store in persistent cache if frequently accessed
-    const frequency = this.frequencyMap.get(key) || 0;
-    if (frequency > 2) {
-      this.persistentCache.set(key, cacheEntry);
-    }
-
-    this.updateFrequency(key);
-    this.performCleanupIfNeeded();
-  }
-
-  /**
-   * Update access frequency
-   */
-  updateFrequency(key) {
-    const current = this.frequencyMap.get(key) || 0;
-    this.frequencyMap.set(key, current + 1);
-  }
-
-  /**
-   * Perform cleanup if needed
-   */
-  performCleanupIfNeeded() {
-    if (Date.now() - this.lastCleanup > this.cleanupInterval) {
+    // Clean up old entries if cache is full
+    if (this.cache.size >= this.maxSize) {
       this.cleanup();
-      this.lastCleanup = Date.now();
     }
+    
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+    this.accessTimes.set(key, Date.now());
   }
 
-  /**
-   * Cleanup old and infrequent entries
-   */
+  generateKey(text, options) {
+    return `${text.substring(0, 100)}:${JSON.stringify(options)}`;
+  }
+
   cleanup() {
-    const now = Date.now();
+    // Remove least recently accessed items
+    const sortedEntries = Array.from(this.accessTimes.entries())
+      .sort((a, b) => a[1] - b[1]);
     
-    // Clean memory cache
-    for (const [key, value] of this.memoryCache.entries()) {
-      if (now - value.timestamp > CACHE_TIMEOUT || this.memoryCache.size > MAX_CACHE_SIZE) {
-        this.memoryCache.delete(key);
-      }
-    }
-
-    // Clean persistent cache
-    for (const [key, value] of this.persistentCache.entries()) {
-      if (now - value.timestamp > CACHE_TIMEOUT * 2) {
-        this.persistentCache.delete(key);
-        this.frequencyMap.delete(key);
-      }
-    }
-
-    console.log(`🧹 Cache cleanup completed. Memory: ${this.memoryCache.size}, Persistent: ${this.persistentCache.size}`);
-  }
-
-  /**
-   * Clear all caches
-   */
-  clear() {
-    this.memoryCache.clear();
-    this.persistentCache.clear();
-    this.frequencyMap.clear();
-    console.log('🗑️ All caches cleared');
-  }
-
-  /**
-   * Get cache statistics
-   */
-  getStats() {
-    return {
-      memorySize: this.memoryCache.size,
-      persistentSize: this.persistentCache.size,
-      totalEntries: this.frequencyMap.size,
-      lastCleanup: this.lastCleanup
-    };
-  }
-}
-
-/**
- * Advanced Text Processor for incremental checking
- */
-class TextProcessor {
-  constructor() {
-    this.previousContent = '';
-    this.previousParagraphs = [];
-  }
-
-  /**
-   * Strip HTML tags while preserving structure
-   */
-  stripHTML(html) {
-    if (!html) return '';
-    
-    // Check if we're in a browser environment
-    if (typeof document === 'undefined') {
-      // Fallback for non-browser environments - simple regex strip
-      return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    }
-    
-    try {
-      // Create a temporary DOM element
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = html;
-      
-      // Get text content while preserving line breaks
-      const text = tempDiv.textContent || tempDiv.innerText || '';
-      
-      // Normalize whitespace but preserve paragraph breaks
-      return text.replace(/\s+/g, ' ').trim();
-    } catch (error) {
-      console.warn('HTML stripping failed, using fallback:', error);
-      // Fallback to regex-based stripping
-      return html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
-    }
-  }
-
-  /**
-   * Detect changes and return only modified sections
-   */
-  getIncrementalChanges(newContent) {
-    const newText = this.stripHTML(newContent);
-    const oldText = this.previousContent;
-    
-    // If content is significantly different, check everything
-    if (Math.abs(newText.length - oldText.length) > 100) {
-      this.previousContent = newText;
-      return { fullCheck: true, text: newText };
-    }
-
-    // Split into paragraphs for granular checking
-    const newParagraphs = newText.split(/\n\s*\n/).filter(p => p.trim());
-    const oldParagraphs = this.previousParagraphs;
-    
-    // Find changed paragraphs
-    const changedParagraphs = [];
-    const maxLength = Math.max(newParagraphs.length, oldParagraphs.length);
-    
-    for (let i = 0; i < maxLength; i++) {
-      const newPara = newParagraphs[i] || '';
-      const oldPara = oldParagraphs[i] || '';
-      
-      if (newPara !== oldPara) {
-        changedParagraphs.push({
-          index: i,
-          text: newPara,
-          offset: this.calculateOffset(newParagraphs, i)
-        });
-      }
-    }
-
-    this.previousContent = newText;
-    this.previousParagraphs = newParagraphs;
-
-    return {
-      fullCheck: false,
-      changedParagraphs,
-      fullText: newText
-    };
-  }
-
-  /**
-   * Calculate character offset for a paragraph
-   */
-  calculateOffset(paragraphs, index) {
-    let offset = 0;
-    for (let i = 0; i < index; i++) {
-      offset += paragraphs[i].length + 2; // +2 for paragraph breaks
-    }
-    return offset;
-  }
-
-  /**
-   * Normalize text for processing
-   */
-  normalizeText(text) {
-    return text
-      .replace(/[\u2018\u2019]/g, "'") // Smart quotes
-      .replace(/[\u201C\u201D]/g, '"') // Smart double quotes
-      .replace(/\u2026/g, '...') // Ellipsis
-      .replace(/\u2013/g, '-') // En dash
-      .replace(/\u2014/g, '--') // Em dash
-      .trim();
-  }
-
-  /**
-   * Extract sentences for detailed analysis
-   */
-  extractSentences(text) {
-    // Enhanced sentence splitting that handles edge cases
-    const sentences = text.match(/[^\.!?]+[\.!?]+/g) || [];
-    return sentences.map((sentence, index) => ({
-      text: sentence.trim(),
-      index,
-      offset: text.indexOf(sentence),
-      length: sentence.length
-    }));
-  }
-}
-
-/**
- * Advanced Issue Processor with AI-like categorization
- */
-class IssueProcessor {
-  constructor() {
-    this.customRules = new Map();
-    this.userPreferences = new Map();
-  }
-
-  /**
-   * Process LanguageTool matches with enhanced categorization
-   */
-  processMatches(matches, originalText, context = 'general') {
-    return matches.map((match, index) => {
-      const category = this.categorizeIssue(match, context);
-      const severity = this.calculateSeverity(match, category);
-      const confidence = this.calculateConfidence(match);
-      
-      return {
-        id: `issue-${match.offset}-${match.length}-${Date.now()}-${index}`,
-        category: category.id,
-        categoryData: category,
-        type: match.rule.category.id,
-        message: this.enhanceMessage(match.message, category),
-        shortMessage: match.shortMessage || this.generateShortMessage(match),
-        explanation: this.generateExplanation(match, category),
-        offset: match.offset,
-        length: match.length,
-        severity,
-        confidence,
-        priority: this.calculatePriority(severity, category, confidence),
-        suggestions: this.enhanceSuggestions(match.replacements, match, context),
-        originalText: originalText.substring(match.offset, match.offset + match.length),
-        rule: {
-          id: match.rule.id,
-          description: match.rule.description,
-          issueType: match.rule.issueType,
-          category: match.rule.category
-        },
-        context: {
-          text: match.context.text,
-          offset: match.context.offset,
-          length: match.context.length,
-          beforeText: originalText.substring(Math.max(0, match.offset - 20), match.offset),
-          afterText: originalText.substring(match.offset + match.length, match.offset + match.length + 20)
-        },
-        metadata: {
-          timestamp: Date.now(),
-          processed: true,
-          userDismissed: false,
-          autoFixable: this.isAutoFixable(match),
-          learningOpportunity: this.isLearningOpportunity(match)
-        }
-      };
+    const toRemove = sortedEntries.slice(0, Math.floor(this.maxSize * 0.3));
+    toRemove.forEach(([key]) => {
+      this.cache.delete(key);
+      this.accessTimes.delete(key);
     });
   }
 
-  /**
-   * Enhanced issue categorization with context awareness
-   */
-  categorizeIssue(match, context) {
-    const categoryId = match.rule.category.id.toLowerCase();
-    const ruleId = match.rule.id.toLowerCase();
-    const issueType = match.rule.issueType || '';
-
-    // Spelling and typos
-    if (categoryId.includes('typo') || 
-        categoryId.includes('spelling') || 
-        ruleId.includes('spelling') || 
-        ruleId.includes('hunspell') ||
-        issueType.includes('misspelling')) {
-      return GRAMMAR_CATEGORIES.spelling;
-    }
-
-    // Grammar rules
-    if (categoryId.includes('grammar') || 
-        categoryId.includes('agreement') ||
-        categoryId.includes('verb') || 
-        categoryId.includes('tense') ||
-        ruleId.includes('agreement') ||
-        issueType.includes('grammar')) {
-      return GRAMMAR_CATEGORIES.grammar;
-    }
-
-    // Punctuation
-    if (categoryId.includes('punctuation') || 
-        categoryId.includes('comma') ||
-        ruleId.includes('comma') || 
-        ruleId.includes('apostrophe') ||
-        ruleId.includes('period') ||
-        issueType.includes('punctuation')) {
-      return GRAMMAR_CATEGORIES.punctuation;
-    }
-
-    // Style improvements
-    if (categoryId.includes('style') || 
-        categoryId.includes('redundancy') ||
-        categoryId.includes('wordiness') || 
-        ruleId.includes('style') ||
-        ruleId.includes('redundant') ||
-        issueType.includes('style')) {
-      return GRAMMAR_CATEGORIES.style;
-    }
-
-    // Clarity and readability
-    if (categoryId.includes('clarity') || 
-        categoryId.includes('confused') ||
-        ruleId.includes('confused') || 
-        categoryId.includes('plain') ||
-        ruleId.includes('readability') ||
-        issueType.includes('clarity')) {
-      return GRAMMAR_CATEGORIES.clarity;
-    }
-
-    // Default to grammar if unclear
-    return GRAMMAR_CATEGORIES.grammar;
-  }
-
-  /**
-   * Calculate issue severity
-   */
-  calculateSeverity(match, category) {
-    const baseScore = category.priority;
-    const ruleId = match.rule.id.toLowerCase();
-    
-    // Critical errors (always fix these)
-    if (category.id === 'spelling' || ruleId.includes('agreement')) {
-      return 'critical';
-    }
-    
-    // High priority errors
-    if (category.id === 'grammar' || ruleId.includes('syntax')) {
-      return 'high';
-    }
-    
-    // Medium priority
-    if (category.id === 'punctuation') {
-      return 'medium';
-    }
-    
-    // Low priority suggestions
-    return 'low';
-  }
-
-  /**
-   * Calculate confidence score
-   */
-  calculateConfidence(match) {
-    let confidence = 0.8; // Base confidence
-    
-    // Higher confidence for certain rule types
-    if (match.rule.id.includes('HUNSPELL') || match.rule.id.includes('SPELLING')) {
-      confidence = 0.95;
-    }
-    
-    // Lower confidence for style suggestions
-    if (match.rule.category.id.toLowerCase().includes('style')) {
-      confidence = 0.6;
-    }
-    
-    // Adjust based on context length
-    if (match.context.text.length > 50) {
-      confidence += 0.1;
-    }
-    
-    return Math.min(1.0, confidence);
-  }
-
-  /**
-   * Calculate overall priority
-   */
-  calculatePriority(severity, category, confidence) {
-    const severityWeights = {
-      critical: 10,
-      high: 7,
-      medium: 5,
-      low: 2
-    };
-    
-    const baseScore = severityWeights[severity] || 2;
-    const categoryWeight = category.priority;
-    const confidenceWeight = confidence * 3;
-    
-    return Math.round(baseScore + categoryWeight + confidenceWeight);
-  }
-
-  /**
-   * Enhance suggestions with context
-   */
-  enhanceSuggestions(replacements, match, context) {
-    if (!replacements || replacements.length === 0) {
-      return [];
-    }
-
-    return replacements.slice(0, 5).map((replacement, index) => ({
-      text: replacement.value,
-      confidence: this.calculateSuggestionConfidence(replacement, match),
-      explanation: this.generateSuggestionExplanation(replacement, match),
-      priority: index,
-      contextAppropriate: this.isContextAppropriate(replacement.value, context)
-    }));
-  }
-
-  /**
-   * Calculate suggestion confidence
-   */
-  calculateSuggestionConfidence(replacement, match) {
-    // Higher confidence for exact matches
-    if (replacement.value.toLowerCase() === match.rule.id.toLowerCase()) {
-      return 0.95;
-    }
-    
-    // Medium confidence for most suggestions
-    return 0.75;
-  }
-
-  /**
-   * Generate suggestion explanation
-   */
-  generateSuggestionExplanation(replacement, match) {
-    const category = match.rule.category.id.toLowerCase();
-    
-    if (category.includes('spelling')) {
-      return `Corrects spelling to "${replacement.value}"`;
-    }
-    
-    if (category.includes('grammar')) {
-      return `Improves grammar by using "${replacement.value}"`;
-    }
-    
-    if (category.includes('style')) {
-      return `Enhances style with "${replacement.value}"`;
-    }
-    
-    return `Suggested improvement: "${replacement.value}"`;
-  }
-
-  /**
-   * Check if suggestion is appropriate for context
-   */
-  isContextAppropriate(suggestion, context) {
-    const contextRules = WRITING_CONTEXTS[context]?.rules || {};
-    
-    // Check contractions
-    if (contextRules.avoidContractions && suggestion.includes("'")) {
-      return false;
-    }
-    
-    // Check formality
-    if (contextRules.preferFormalTone && this.isInformal(suggestion)) {
-      return false;
-    }
-    
-    return true;
-  }
-
-  /**
-   * Check if text is informal
-   */
-  isInformal(text) {
-    const informalWords = ['gonna', 'wanna', 'kinda', 'sorta', 'yeah', 'ok', 'btw'];
-    return informalWords.some(word => text.toLowerCase().includes(word));
-  }
-
-  /**
-   * Enhance issue message
-   */
-  enhanceMessage(message, category) {
-    return `${category.icon} ${message}`;
-  }
-
-  /**
-   * Generate short message
-   */
-  generateShortMessage(match) {
-    const category = match.rule.category.id.toLowerCase();
-    
-    if (category.includes('spelling')) return 'Spelling';
-    if (category.includes('grammar')) return 'Grammar';
-    if (category.includes('punctuation')) return 'Punctuation';
-    if (category.includes('style')) return 'Style';
-    
-    return 'Grammar';
-  }
-
-  /**
-   * Generate detailed explanation
-   */
-  generateExplanation(match, category) {
-    const ruleDescription = match.rule.description || 'Grammar rule violation';
-    return `${category.description}: ${ruleDescription}`;
-  }
-
-  /**
-   * Check if issue is auto-fixable
-   */
-  isAutoFixable(match) {
-    const ruleId = match.rule.id.toLowerCase();
-    const autoFixableRules = [
-      'spelling', 'hunspell', 'comma_compound', 'apostrophe',
-      'uppercase_sentence_start', 'double_punctuation'
-    ];
-    
-    return autoFixableRules.some(rule => ruleId.includes(rule));
-  }
-
-  /**
-   * Check if issue presents learning opportunity
-   */
-  isLearningOpportunity(match) {
-    const category = match.rule.category.id.toLowerCase();
-    return category.includes('grammar') || category.includes('style');
+  clear() {
+    this.cache.clear();
+    this.accessTimes.clear();
   }
 }
 
 /**
- * Main Grammar Engine Class
+ * Text processor for cleaning and preparing text
+ */
+class TextProcessor {
+  stripHTML(text) {
+    if (!text) return '';
+    return text.replace(/<[^>]*>/g, '').replace(/&[^;]+;/g, ' ').trim();
+  }
+
+  normalizeWhitespace(text) {
+      return text.replace(/\s+/g, ' ').trim();
+  }
+
+  getWordCount(text) {
+    if (!text) return 0;
+    return text.split(/\s+/).filter(word => word.length > 0).length;
+  }
+
+  getSentenceCount(text) {
+    if (!text) return 0;
+    return text.split(/[.!?]+/).filter(sentence => sentence.trim().length > 0).length;
+  }
+}
+
+/**
+ * Issue processor for handling grammar results
+ */
+class IssueProcessor {
+  processMatches(matches, originalText, context = 'general') {
+    if (!Array.isArray(matches)) return [];
+
+    return matches.map((match, index) => ({
+      id: `issue-${Date.now()}-${index}`,
+      category: this.categorizeIssue(match),
+      severity: this.determineSeverity(match),
+      priority: this.calculatePriority(match),
+      message: match.message || 'Grammar issue detected',
+      shortMessage: this.getShortMessage(match),
+      offset: match.offset || 0,
+      length: match.length || 1,
+      suggestions: this.processSuggestions(match.suggestions || []),
+        rule: {
+        id: match.rule?.id || 'UNKNOWN',
+        description: match.rule?.description || 'Grammar rule'
+        },
+        context: {
+        text: this.getContextText(originalText, match.offset, match.length),
+        offset: Math.max(0, (match.offset || 0) - 20),
+        length: Math.min(originalText.length, (match.length || 1) + 40)
+        },
+        metadata: {
+        confidence: match.confidence || 0.8,
+          autoFixable: this.isAutoFixable(match),
+        learningOpportunity: false
+      },
+      source: 'offline-grammar-engine'
+    }));
+  }
+
+  categorizeIssue(match) {
+    const category = match.rule?.category?.id || match.category || 'grammar';
+    
+    if (category.toLowerCase().includes('spell')) return 'spelling';
+    if (category.toLowerCase().includes('style')) return 'style';
+    if (category.toLowerCase().includes('punct')) return 'punctuation';
+    
+    return 'grammar';
+  }
+
+  determineSeverity(match) {
+    if (match.rule?.category?.id === 'TYPOS') return 'error';
+    if (match.rule?.category?.id === 'GRAMMAR') return 'error';
+    if (match.rule?.category?.id === 'STYLE') return 'warning';
+    
+    return 'error';
+  }
+
+  calculatePriority(match) {
+    const category = this.categorizeIssue(match);
+    const severity = this.determineSeverity(match);
+    
+    if (severity === 'error' && category === 'spelling') return 10;
+    if (severity === 'error' && category === 'grammar') return 9;
+    if (severity === 'warning' && category === 'punctuation') return 7;
+    if (severity === 'warning' && category === 'style') return 5;
+    
+    return 6;
+  }
+
+  getShortMessage(match) {
+    const category = this.categorizeIssue(match);
+    return GRAMMAR_CATEGORIES[category]?.name || 'Issue';
+  }
+
+  processSuggestions(suggestions) {
+    if (!Array.isArray(suggestions)) return [];
+    
+    return suggestions.slice(0, 5).map((suggestion, index) => ({
+      text: typeof suggestion === 'string' ? suggestion : suggestion.value || '',
+      confidence: suggestion.confidence || 0.8,
+      priority: index,
+      explanation: `Replace with "${typeof suggestion === 'string' ? suggestion : suggestion.value}"`
+    }));
+  }
+
+  getContextText(originalText, offset, length) {
+    const start = Math.max(0, offset - 20);
+    const end = Math.min(originalText.length, offset + length + 20);
+    return originalText.substring(start, end);
+  }
+
+  isAutoFixable(match) {
+    return match.suggestions && match.suggestions.length > 0;
+  }
+}
+
+/**
+ * Main Grammar Engine Class - PRIVACY COMPLIANT VERSION
  */
 class GrammarEngine extends EventEmitter {
   constructor(options = {}) {
     super();
     
-    // Configuration
+    // Configuration - REMOVED external API URL
     this.config = {
-      apiUrl: 'https://api.languagetool.org/v2/check',
       language: options.language || 'en-US',
       debounceTime: options.debounceTime || DEBOUNCE_TIME,
       enableCache: options.enableCache !== false,
       enableIncremental: options.enableIncremental !== false,
       context: options.context || 'general',
       strictMode: options.strictMode || false,
+      // PRIVACY: No external API URL
       ...options
     };
 
@@ -806,7 +320,7 @@ class GrammarEngine extends EventEmitter {
     this.statistics = {
       totalChecks: 0,
       cacheHits: 0,
-      apiCalls: 0,
+      offlineChecks: 0, // Changed from apiCalls
       averageResponseTime: 0,
       totalIssuesFound: 0
     };
@@ -814,12 +328,32 @@ class GrammarEngine extends EventEmitter {
     // Debouncing
     this.debounceTimers = new Map();
     
-    console.log('🚀 GrammarEngine initialized with advanced features');
+    console.log('🚀 GrammarEngine initialized with PRIVACY-COMPLIANT offline features');
     this.emit('initialized', { config: this.config });
+
+    // Initialize the advanced grammar service
+    this.initializeAdvancedService();
   }
 
   /**
-   * Main grammar checking method with intelligent processing
+   * Initialize the offline advanced grammar service
+   */
+  async initializeAdvancedService() {
+    try {
+      console.log('🔒 GrammarEngine: Initializing offline AdvancedGrammarService...');
+      const initialized = await advancedGrammarService.initialize();
+      if (initialized) {
+        console.log('✅ GrammarEngine: Privacy-compliant offline service ready');
+      } else {
+        console.warn('⚠️ GrammarEngine: Offline service initialization failed');
+      }
+    } catch (error) {
+      console.error('❌ GrammarEngine: Error initializing offline service:', error);
+    }
+  }
+
+  /**
+   * Main grammar checking method with OFFLINE processing
    */
   async checkText(text, options = {}) {
     const startTime = Date.now();
@@ -867,8 +401,8 @@ class GrammarEngine extends EventEmitter {
       this.isChecking = true;
       this.emit('checkStarted', { text: cleanText.substring(0, 50) + '...' });
 
-      // Perform the actual grammar check
-      const result = await this.performGrammarCheck(cleanText, checkOptions);
+      // Perform OFFLINE grammar check using AdvancedGrammarService
+      const result = await this.performOfflineGrammarCheck(cleanText, checkOptions);
       
       // Cache the result
       if (this.config.enableCache && result.issues) {
@@ -894,57 +428,29 @@ class GrammarEngine extends EventEmitter {
   }
 
   /**
-   * Perform the actual grammar check with API call
+   * Perform OFFLINE grammar check using AdvancedGrammarService
+   * PRIVACY: No external API calls
    */
-  async performGrammarCheck(text, options) {
+  async performOfflineGrammarCheck(text, options) {
     const requestId = this.generateRequestId();
     
     try {
-      // Prepare API request
-      const requestBody = new URLSearchParams({
-        text: text,
-        language: options.language || 'en-US',
-        enabledOnly: 'false',
-        level: options.strictMode ? 'picky' : 'default'
-      });
-
-      // Add context-specific rules if available
-      if (options.context && options.context !== 'general') {
-        requestBody.append('enabledCategories', this.getContextCategories(options.context));
-      }
+      console.log('🔍 GrammarEngine: Performing OFFLINE grammar check...');
 
       this.activeRequests.set(requestId, { startTime: Date.now(), text: text.substring(0, 50) });
-      this.statistics.apiCalls++;
+      this.statistics.offlineChecks++;
 
-      // Make API call with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
-
-      const response = await fetch(this.config.apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'User-Agent': 'NoteSphere-GrammarPro/1.0'
-        },
-        body: requestBody,
-        signal: controller.signal
+      // Use AdvancedGrammarService (100% offline)
+      const result = await advancedGrammarService.checkText(text, {
+        categories: options.categories || ['grammar', 'spelling', 'style', 'punctuation'],
+        language: options.language || 'en-US'
       });
 
-      clearTimeout(timeoutId);
       this.activeRequests.delete(requestId);
 
-      if (!response.ok) {
-        throw new Error(`LanguageTool API error: ${response.status} ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      // Process the results
-      const processedIssues = this.issueProcessor.processMatches(
-        data.matches || [], 
-        text, 
-        options.context
-      );
+      // Process the results using our issue processor
+      const grammarIssues = result.issues || result || [];
+      const processedIssues = this.issueProcessor.processMatches(grammarIssues, text, options.context);
 
       // Sort issues by priority
       const sortedIssues = this.sortIssuesByPriority(processedIssues);
@@ -954,76 +460,49 @@ class GrammarEngine extends EventEmitter {
 
       this.emit('issuesFound', { 
         count: sortedIssues.length, 
-        categories: this.categorizeIssues(sortedIssues) 
+        categories: this.categorizeIssues(sortedIssues),
+        source: 'offline'
       });
+
+      console.log(`✅ GrammarEngine: Found ${sortedIssues.length} issues offline`);
 
       return {
         issues: sortedIssues,
         analysis,
         statistics: {
           totalIssues: sortedIssues.length,
-          byCategory: this.categorizeIssues(sortedIssues),
-          processingTime: Date.now() - this.activeRequests.get(requestId)?.startTime
+          categories: this.categorizeIssues(sortedIssues),
+          processingSource: 'offline'
         }
       };
 
     } catch (error) {
+      console.error('❌ GrammarEngine: Offline grammar check failed:', error);
       this.activeRequests.delete(requestId);
       
-      if (error.name === 'AbortError') {
-        throw new Error('Grammar check timed out');
-      }
-      
-      // Fallback to local checking
-      console.warn('❌ API check failed, falling back to local checks:', error.message);
-      return await this.performLocalFallbackCheck(text, options);
+      // Fallback to basic local checks if AdvancedGrammarService fails
+      return this.performBasicLocalChecks(text);
     }
   }
 
   /**
-   * Fallback local grammar checking
-   */
-  async performLocalFallbackCheck(text, options) {
-    const localIssues = this.performBasicLocalChecks(text);
-    
-    return {
-      issues: localIssues,
-      analysis: this.generateBasicAnalysis(text),
-      statistics: {
-        totalIssues: localIssues.length,
-        byCategory: this.categorizeIssues(localIssues),
-        fallbackMode: true
-      }
-    };
-  }
-
-  /**
-   * Basic local grammar and spelling checks
+   * Fallback basic local checks if advanced service fails
    */
   performBasicLocalChecks(text) {
+    console.log('🔄 GrammarEngine: Using basic local fallback checks...');
+    
     const issues = [];
     
-    // Common spelling mistakes
+    // Basic spelling corrections
     const commonMistakes = {
       'teh': 'the',
       'recieve': 'receive',
-      'definately': 'definitely',
       'seperate': 'separate',
       'occured': 'occurred',
-      'begining': 'beginning',
-      'acheive': 'achieve',
-      'beleive': 'believe',
-      'neccessary': 'necessary',
-      'accomodate': 'accommodate',
-      'existance': 'existence',
-      'independant': 'independent',
-      'maintainance': 'maintenance',
-      'perseverence': 'perseverance',
-      'restaraunt': 'restaurant',
-      'tommorrow': 'tomorrow'
+      'definately': 'definitely',
+      'grammer': 'grammar'
     };
 
-    // Check for common mistakes
     Object.entries(commonMistakes).forEach(([mistake, correction]) => {
       const regex = new RegExp(`\\b${mistake}\\b`, 'gi');
       let match;
@@ -1081,7 +560,15 @@ class GrammarEngine extends EventEmitter {
     // Basic capitalization checks
     this.performBasicCapitalizationChecks(text, issues);
 
-    return issues;
+    return {
+      issues,
+      analysis: this.generateTextAnalysis(text, issues, {}),
+      statistics: {
+        totalIssues: issues.length,
+        categories: this.categorizeIssues(issues),
+        processingSource: 'fallback'
+      }
+    };
   }
 
   /**
@@ -1091,49 +578,31 @@ class GrammarEngine extends EventEmitter {
     // Double spaces
     const doubleSpaceRegex = /  +/g;
     let match;
-    
     while ((match = doubleSpaceRegex.exec(text)) !== null) {
       issues.push({
-        id: `local-spacing-${match.index}-${Date.now()}`,
+        id: `punct-double-space-${match.index}`,
         category: 'punctuation',
-        categoryData: GRAMMAR_CATEGORIES.punctuation,
-        type: 'WHITESPACE',
-        message: '❗ Extra spaces detected',
-        shortMessage: 'Spacing',
-        explanation: 'Multiple consecutive spaces should typically be replaced with a single space.',
+        message: 'Multiple consecutive spaces',
         offset: match.index,
         length: match[0].length,
-        severity: 'low',
-        confidence: 0.8,
-        priority: 3,
-        suggestions: [{
-          text: ' ',
-          confidence: 0.9,
-          explanation: 'Replace with single space',
-          priority: 0,
-          contextAppropriate: true
-        }],
-        originalText: match[0],
-        rule: {
-          id: 'LOCAL_DOUBLE_SPACE',
-          description: 'Multiple consecutive spaces',
-          issueType: 'whitespace'
-        },
-        context: {
-          text: text.substring(Math.max(0, match.index - 10), match.index + match[0].length + 10),
-          offset: Math.min(10, match.index),
-          length: match[0].length,
-          beforeText: text.substring(Math.max(0, match.index - 10), match.index),
-          afterText: text.substring(match.index + match[0].length, match.index + match[0].length + 10)
-        },
-        metadata: {
-          timestamp: Date.now(),
-          processed: true,
-          userDismissed: false,
-          autoFixable: true,
-          learningOpportunity: false,
-          localCheck: true
-        }
+        severity: 'warning',
+        suggestions: [{ text: ' ', confidence: 0.9 }],
+        rule: { id: 'DOUBLE_SPACE', description: 'Multiple consecutive spaces' }
+      });
+    }
+
+    // Missing space after punctuation
+    const missingSpaceRegex = /[.!?][a-zA-Z]/g;
+    while ((match = missingSpaceRegex.exec(text)) !== null) {
+      issues.push({
+        id: `punct-missing-space-${match.index}`,
+        category: 'punctuation',
+        message: 'Missing space after punctuation',
+        offset: match.index + 1,
+        length: 1,
+        severity: 'warning',
+        suggestions: [{ text: ' ' + match[0][1], confidence: 0.8 }],
+        rule: { id: 'MISSING_SPACE_AFTER_PUNCT', description: 'Missing space after punctuation' }
       });
     }
   }
@@ -1142,288 +611,67 @@ class GrammarEngine extends EventEmitter {
    * Basic capitalization checking
    */
   performBasicCapitalizationChecks(text, issues) {
-    // Check for sentences not starting with capital letters
-    const sentenceRegex = /[.!?]\s+[a-z]/g;
-    let match;
+    // Sentence starts
+    const sentences = text.split(/[.!?]+/);
+    let offset = 0;
     
-    while ((match = sentenceRegex.exec(text)) !== null) {
-      const letterIndex = match.index + match[0].length - 1;
-      const letter = text[letterIndex];
-      
+    sentences.forEach((sentence, index) => {
+      const trimmed = sentence.trim();
+      if (trimmed.length > 0 && /^[a-z]/.test(trimmed)) {
       issues.push({
-        id: `local-capitalization-${letterIndex}-${Date.now()}`,
+          id: `cap-sentence-start-${offset}`,
         category: 'grammar',
-        categoryData: GRAMMAR_CATEGORIES.grammar,
-        type: 'CAPITALIZATION',
-        message: '📝 Sentence should start with capital letter',
-        shortMessage: 'Capitalization',
-        explanation: 'Sentences should begin with a capital letter.',
-        offset: letterIndex,
+          message: 'Sentence should start with a capital letter',
+          offset: text.indexOf(trimmed, offset),
         length: 1,
-        severity: 'medium',
-        confidence: 0.85,
-        priority: 6,
-        suggestions: [{
-          text: letter.toUpperCase(),
-          confidence: 0.95,
-          explanation: `Capitalize "${letter}" to "${letter.toUpperCase()}"`,
-          priority: 0,
-          contextAppropriate: true
-        }],
-        originalText: letter,
-        rule: {
-          id: 'LOCAL_SENTENCE_START',
-          description: 'Sentences should start with capital letters',
-          issueType: 'capitalization'
-        },
-        context: {
-          text: text.substring(Math.max(0, letterIndex - 15), letterIndex + 16),
-          offset: Math.min(15, letterIndex),
-          length: 1,
-          beforeText: text.substring(Math.max(0, letterIndex - 15), letterIndex),
-          afterText: text.substring(letterIndex + 1, letterIndex + 16)
-        },
-        metadata: {
-          timestamp: Date.now(),
-          processed: true,
-          userDismissed: false,
-          autoFixable: true,
-          learningOpportunity: false,
-          localCheck: true
-        }
-      });
-    }
+          severity: 'warning',
+          suggestions: [{ text: trimmed[0].toUpperCase(), confidence: 0.9 }],
+          rule: { id: 'SENTENCE_CAPITALIZATION', description: 'Sentence capitalization' }
+        });
+      }
+      offset += sentence.length + 1;
+    });
   }
 
   /**
    * Generate comprehensive text analysis
    */
   generateTextAnalysis(text, issues, options) {
-    const sentences = this.textProcessor.extractSentences(text);
-    const words = text.split(/\s+/).filter(word => word.length > 0);
+    const wordCount = this.textProcessor.getWordCount(text);
+    const sentenceCount = this.textProcessor.getSentenceCount(text);
+    
+    // Calculate writing score based on issues
+    const errorRate = issues.length / Math.max(wordCount, 1);
+    const writingScore = Math.max(20, Math.min(100, 100 - (errorRate * 200)));
     
     return {
-      readabilityScore: this.calculateReadabilityScore(text, sentences),
-      writingScore: this.calculateWritingScore(issues, words.length),
-      wordCount: words.length,
-      sentenceCount: sentences.length,
-      averageSentenceLength: words.length / sentences.length || 0,
-      complexityScore: this.calculateComplexityScore(text, words),
-      issueDistribution: this.getIssueDistribution(issues),
-      suggestions: this.generateWritingSuggestions(text, issues, options),
-      toneAnalysis: this.analyzeTone(text, words),
-      vocabularyDiversity: this.calculateVocabularyDiversity(words)
+      writingScore: Math.round(writingScore),
+      wordCount,
+      sentenceCount,
+      averageSentenceLength: wordCount / Math.max(sentenceCount, 1),
+      readabilityScore: Math.round(Math.max(20, 100 - (errorRate * 150))),
+      vocabularyDiversity: Math.min(100, (new Set(text.toLowerCase().split(/\s+/)).size / wordCount) * 100),
+      complexityScore: Math.round(Math.min(100, (wordCount / Math.max(sentenceCount, 1)) * 3)),
+      categories: this.categorizeIssues(issues),
+      suggestions: issues.length > 0 ? `Found ${issues.length} areas for improvement` : 'Excellent writing!'
     };
-  }
-
-  /**
-   * Calculate readability score (Flesch Reading Ease approximation)
-   */
-  calculateReadabilityScore(text, sentences) {
-    const words = text.split(/\s+/).filter(word => word.length > 0);
-    const syllables = words.reduce((total, word) => total + this.countSyllables(word), 0);
-    
-    if (sentences.length === 0 || words.length === 0) return 0;
-    
-    const avgSentenceLength = words.length / sentences.length;
-    const avgSyllablesPerWord = syllables / words.length;
-    
-    // Flesch Reading Ease formula
-    const score = 206.835 - (1.015 * avgSentenceLength) - (84.6 * avgSyllablesPerWord);
-    
-    return Math.max(0, Math.min(100, Math.round(score)));
-  }
-
-  /**
-   * Count syllables in a word (approximation)
-   */
-  countSyllables(word) {
-    word = word.toLowerCase();
-    if (word.length <= 3) return 1;
-    
-    word = word.replace(/(?:[^laeiouy]es|ed|[^laeiouy]e)$/, '');
-    word = word.replace(/^y/, '');
-    
-    const matches = word.match(/[aeiouy]{1,2}/g);
-    return matches ? matches.length : 1;
-  }
-
-  /**
-   * Calculate overall writing score
-   */
-  calculateWritingScore(issues, wordCount) {
-    let baseScore = 100;
-    
-    // Penalty system based on issue severity and frequency
-    const penaltyMap = {
-      critical: -8,
-      high: -5,
-      medium: -3,
-      low: -1
-    };
-    
-    const totalPenalty = issues.reduce((penalty, issue) => {
-      return penalty + (penaltyMap[issue.severity] || -1);
-    }, 0);
-    
-    // Adjust for text length (longer texts are more forgiving)
-    const lengthAdjustment = Math.min(10, wordCount / 100);
-    
-    const finalScore = baseScore + totalPenalty + lengthAdjustment;
-    return Math.max(0, Math.min(100, Math.round(finalScore)));
-  }
-
-  /**
-   * Calculate text complexity score
-   */
-  calculateComplexityScore(text, words) {
-    const longWords = words.filter(word => word.length > 6).length;
-    const complexityRatio = longWords / words.length;
-    
-    return Math.round(complexityRatio * 100);
-  }
-
-  /**
-   * Analyze tone of the text
-   */
-  analyzeTone(text, words) {
-    const formalWords = ['therefore', 'furthermore', 'however', 'consequently', 'nevertheless'];
-    const informalWords = ['gonna', 'wanna', 'yeah', 'ok', 'cool', 'awesome'];
-    const emotionalWords = ['love', 'hate', 'amazing', 'terrible', 'wonderful', 'awful'];
-    
-    const formalCount = formalWords.filter(word => text.toLowerCase().includes(word)).length;
-    const informalCount = informalWords.filter(word => text.toLowerCase().includes(word)).length;
-    const emotionalCount = emotionalWords.filter(word => text.toLowerCase().includes(word)).length;
-    
-    let dominantTone = 'neutral';
-    if (formalCount > informalCount) dominantTone = 'formal';
-    else if (informalCount > formalCount) dominantTone = 'informal';
-    if (emotionalCount > 2) dominantTone = 'emotional';
-    
-    return {
-      dominant: dominantTone,
-      formalityScore: Math.round((formalCount / (formalCount + informalCount + 1)) * 100),
-      emotionalIntensity: Math.min(100, emotionalCount * 20)
-    };
-  }
-
-  /**
-   * Calculate vocabulary diversity
-   */
-  calculateVocabularyDiversity(words) {
-    const uniqueWords = new Set(words.map(word => word.toLowerCase()));
-    return Math.round((uniqueWords.size / words.length) * 100);
-  }
-
-  /**
-   * Get issue distribution by category
-   */
-  getIssueDistribution(issues) {
-    const distribution = {};
-    
-    Object.keys(GRAMMAR_CATEGORIES).forEach(category => {
-      distribution[category] = {
-        count: 0,
-        percentage: 0,
-        severity: { critical: 0, high: 0, medium: 0, low: 0 }
-      };
-    });
-
-    issues.forEach(issue => {
-      if (distribution[issue.category]) {
-        distribution[issue.category].count++;
-        distribution[issue.category].severity[issue.severity]++;
-      }
-    });
-
-    // Calculate percentages
-    const totalIssues = issues.length;
-    Object.keys(distribution).forEach(category => {
-      distribution[category].percentage = totalIssues > 0 
-        ? Math.round((distribution[category].count / totalIssues) * 100)
-        : 0;
-    });
-
-    return distribution;
-  }
-
-  /**
-   * Generate writing suggestions based on analysis
-   */
-  generateWritingSuggestions(text, issues, options) {
-    const suggestions = [];
-    const sentences = this.textProcessor.extractSentences(text);
-    const words = text.split(/\s+/).filter(word => word.length > 0);
-
-    // Readability suggestions
-    if (sentences.length > 0) {
-      const avgSentenceLength = words.length / sentences.length;
-      if (avgSentenceLength > 25) {
-        suggestions.push({
-          type: 'readability',
-          priority: 'medium',
-          message: 'Consider breaking up long sentences for better readability',
-          explanation: 'Sentences averaging more than 25 words can be hard to follow',
-          actionable: true
-        });
-      }
-    }
-
-    // Style suggestions based on context
-    if (options.context === 'academic' && issues.some(i => i.category === 'style')) {
-      suggestions.push({
-        type: 'style',
-        priority: 'low',
-        message: 'Consider using more formal language for academic writing',
-        explanation: 'Academic writing benefits from formal tone and precise vocabulary',
-        actionable: false
-      });
-    }
-
-    // Vocabulary diversity
-    const diversity = this.calculateVocabularyDiversity(words);
-    if (diversity < 40 && words.length > 100) {
-      suggestions.push({
-        type: 'vocabulary',
-        priority: 'medium',
-        message: 'Try using more varied vocabulary to enhance your writing',
-        explanation: 'Vocabulary diversity makes writing more engaging',
-        actionable: false
-      });
-    }
-
-    return suggestions;
   }
 
   /**
    * Sort issues by priority and category
    */
   sortIssuesByPriority(issues) {
-    return issues.sort((a, b) => {
-      // First sort by priority (higher is more important)
-      if (a.priority !== b.priority) {
-        return b.priority - a.priority;
-      }
-      
-      // Then by position in text (earlier issues first)
-      return a.offset - b.offset;
-    });
+    return issues.sort((a, b) => (b.priority || 0) - (a.priority || 0));
   }
 
   /**
    * Categorize issues for statistics
    */
   categorizeIssues(issues) {
-    const categories = {};
-    
-    issues.forEach(issue => {
-      if (!categories[issue.category]) {
-        categories[issue.category] = 0;
-      }
-      categories[issue.category]++;
-    });
-    
-    return categories;
+    return issues.reduce((acc, issue) => {
+      acc[issue.category] = (acc[issue.category] || 0) + 1;
+      return acc;
+    }, {});
   }
 
   /**
@@ -1452,44 +700,38 @@ class GrammarEngine extends EventEmitter {
    */
   updateStatistics(startTime, result) {
     const duration = Date.now() - startTime;
-    this.statistics.averageResponseTime = 
-      (this.statistics.averageResponseTime + duration) / 2;
+    const issueCount = result.issues?.length || 0;
     
-    if (result.issues) {
-      this.statistics.totalIssuesFound += result.issues.length;
-    }
+    this.statistics.averageResponseTime = 
+      (this.statistics.averageResponseTime * (this.statistics.totalChecks - 1) + duration) / this.statistics.totalChecks;
+    this.statistics.totalIssuesFound += issueCount;
   }
 
   /**
    * Handle errors with proper logging
    */
   handleError(error, text, options) {
-    console.error('❌ GrammarEngine error:', error);
-    this.emit('error', { 
-      error: error.message, 
-      text: text?.substring(0, 50) + '...',
-      options 
-    });
+    console.error('GrammarEngine error:', error);
+    this.emit('error', { error, text: text?.substring(0, 50) });
   }
 
   /**
    * Generate basic analysis for fallback mode
    */
   generateBasicAnalysis(text) {
-    const words = text.split(/\s+/).filter(word => word.length > 0);
-    const sentences = this.textProcessor.extractSentences(text);
+    const wordCount = this.textProcessor.getWordCount(text);
+    const sentenceCount = this.textProcessor.getSentenceCount(text);
     
     return {
-      readabilityScore: this.calculateReadabilityScore(text, sentences),
       writingScore: 85, // Default good score for basic mode
-      wordCount: words.length,
-      sentenceCount: sentences.length,
-      averageSentenceLength: words.length / sentences.length || 0,
-      complexityScore: this.calculateComplexityScore(text, words),
-      issueDistribution: {},
+      wordCount,
+      sentenceCount,
+      averageSentenceLength: wordCount / Math.max(sentenceCount, 1),
+      readabilityScore: Math.round(Math.max(20, 100 - (wordCount / Math.max(sentenceCount, 1)) * 150)),
+      vocabularyDiversity: Math.min(100, (new Set(text.toLowerCase().split(/\s+/)).size / wordCount) * 100),
+      complexityScore: Math.round(Math.min(100, (wordCount / Math.max(sentenceCount, 1)) * 3)),
+      categories: {},
       suggestions: [],
-      toneAnalysis: this.analyzeTone(text, words),
-      vocabularyDiversity: this.calculateVocabularyDiversity(words),
       fallbackMode: true
     };
   }
@@ -1498,56 +740,31 @@ class GrammarEngine extends EventEmitter {
    * Apply suggestion to text
    */
   applySuggestion(text, issue, suggestion) {
-    if (!text || !issue || !suggestion) {
-      throw new Error('Invalid parameters for suggestion application');
-    }
+    if (!text || !issue || !suggestion) return text;
 
     const before = text.substring(0, issue.offset);
     const after = text.substring(issue.offset + issue.length);
-    const newText = before + suggestion.text + after;
-
-    // Emit event for tracking
-    this.emit('suggestionApplied', {
-      issueId: issue.id,
-      category: issue.category,
-      originalText: issue.originalText,
-      suggestion: suggestion.text,
-      confidence: suggestion.confidence
-    });
-
-    return newText;
+    
+    return before + suggestion.text + after;
   }
 
   /**
    * Batch apply multiple suggestions
    */
-  batchApplySuggestions(text, appliedSuggestions) {
-    // Sort by offset in reverse order to maintain correct positions
-    const sortedSuggestions = appliedSuggestions
-      .sort((a, b) => b.issue.offset - a.issue.offset);
-
-    let modifiedText = text;
+  batchApplySuggestions(text, autoFixItems) {
+    // Apply suggestions from end to beginning to maintain offsets
+    const sortedItems = autoFixItems.sort((a, b) => b.issue.offset - a.issue.offset);
     
-    sortedSuggestions.forEach(({ issue, suggestion }) => {
-      modifiedText = this.applySuggestion(modifiedText, issue, suggestion);
-    });
-
-    this.emit('batchSuggestionsApplied', {
-      count: appliedSuggestions.length,
-      categories: appliedSuggestions.map(a => a.issue.category)
-    });
-
-    return modifiedText;
+    return sortedItems.reduce((currentText, { issue, suggestion }) => {
+      return this.applySuggestion(currentText, issue, suggestion);
+    }, text);
   }
 
   /**
    * Dismiss an issue (for learning purposes)
    */
-  dismissIssue(issueId, reason = 'user_dismissed') {
-    this.emit('issueDismissed', { issueId, reason });
-    
-    // Could implement user learning here
-    // this.userPreferences.addDismissedRule(issue.rule.id);
+  dismissIssue(issueId) {
+    this.emit('issueDismissed', { issueId });
   }
 
   /**
@@ -1555,10 +772,10 @@ class GrammarEngine extends EventEmitter {
    */
   getAutoFixSuggestions(issues) {
     return issues
-      .filter(issue => issue.metadata.autoFixable && issue.confidence > 0.8)
+      .filter(issue => issue.metadata?.autoFixable && issue.suggestions?.length > 0)
       .map(issue => ({
         issue,
-        suggestion: issue.suggestions[0] // Take the highest confidence suggestion
+        suggestion: issue.suggestions[0]
       }));
   }
 
@@ -1577,15 +794,7 @@ class GrammarEngine extends EventEmitter {
    * Get real-time statistics
    */
   getStatistics() {
-    const cacheStats = this.cacheManager.getStats();
-    
-    return {
-      ...this.statistics,
-      cache: cacheStats,
-      isChecking: this.isChecking,
-      activeRequests: this.activeRequests.size,
-      uptime: Date.now() - (this.startTime || Date.now())
-    };
+    return { ...this.statistics };
   }
 
   /**
@@ -1595,7 +804,7 @@ class GrammarEngine extends EventEmitter {
     this.statistics = {
       totalChecks: 0,
       cacheHits: 0,
-      apiCalls: 0,
+      offlineChecks: 0,
       averageResponseTime: 0,
       totalIssuesFound: 0
     };
@@ -1607,12 +816,10 @@ class GrammarEngine extends EventEmitter {
    * Configure writing context
    */
   setWritingContext(context) {
-    if (WRITING_CONTEXTS[context]) {
-      this.config.context = context;
-      this.emit('contextChanged', { context });
-      return true;
-    }
-    return false;
+    // Context is now handled internally by AdvancedGrammarService
+    // this.config.context = context;
+    // this.emit('contextChanged', { context });
+    return true; // Always successful for offline
   }
 
   /**
@@ -1797,11 +1004,11 @@ class GrammarEngine extends EventEmitter {
     const insights = [];
     
     // Issue distribution insights
-    const distribution = this.getIssueDistribution(issues);
+    const distribution = this.categorizeIssues(issues);
     const topCategory = Object.entries(distribution)
-      .sort(([,a], [,b]) => b.count - a.count)[0];
+      .sort(([,a], [,b]) => b - a)[0];
     
-    if (topCategory && topCategory[1].count > 0) {
+    if (topCategory && topCategory[1] > 0) {
       insights.push({
         type: 'issue_pattern',
         severity: 'info',
@@ -1949,8 +1156,5 @@ export { GRAMMAR_CATEGORIES, WRITING_CONTEXTS };
 
 // Create and export singleton instance
 const grammarEngine = new GrammarEngine();
-
-// Add initialization timestamp
-grammarEngine.startTime = Date.now();
 
 export default grammarEngine;

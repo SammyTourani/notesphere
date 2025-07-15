@@ -7,6 +7,7 @@ import {
   doc, 
   addDoc, 
   updateDoc, 
+  deleteDoc,
   getDocs, 
   getDoc, 
   query, 
@@ -1283,14 +1284,10 @@ export function NotesProvider({ children }) {
         }
         
         try {
-          // In a real app, you might want to actually delete the document
-          // For now, we'll just mark it as permanently deleted
+          // Actually delete the document from Firebase
           const noteRef = doc(db, 'notes', noteId);
           
-          await updateDoc(noteRef, {
-            permanentlyDeleted: true,
-            lastUpdated: serverTimestamp()
-          });
+          await deleteDoc(noteRef);
           
           console.log(`Permanently deleted Firestore note: ${noteId}`);
           
@@ -1339,11 +1336,11 @@ export function NotesProvider({ children }) {
         try {
           const promises = trashedNotes.map(note => {
             const noteRef = doc(db, 'notes', note.id);
-            return updateDoc(noteRef, { permanentlyDeleted: true });
+            return deleteDoc(noteRef);
           });
           
           await Promise.all(promises);
-          console.log("All trashed notes marked as permanently deleted");
+          console.log("All trashed notes permanently deleted from Firebase");
           
           // Update state
           setTrashedNotes([]);

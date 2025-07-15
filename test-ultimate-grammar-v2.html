@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Grammar System V2 - Next Generation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            height: 100vh;
+        }
+        
+        .left-panel, .right-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            grid-column: 1 / -1;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+        
+        .features-badge {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        
+        .badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .section-title {
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-input {
+            width: 100%;
+            min-height: 150px;
+            padding: 20px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 20px;
+            font-family: inherit;
+            line-height: 1.6;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(45deg, #6c7b7f, #5a6a6e);
+        }
+        
+        .btn.danger {
+            background: linear-gradient(45deg, #ff6b6b, #e55656);
+        }
+        
+        .results-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .issue {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 12px 0;
+            border-left: 4px solid #ff6b6b;
+            transition: all 0.3s ease;
+        }
+        
+        .issue:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+        
+        .issue.grammar { border-left-color: #4ecdc4; }
+        .issue.spelling { border-left-color: #ff6b6b; }
+        .issue.style { border-left-color: #45b7d1; }
+        .issue.clarity { border-left-color: #96ceb4; }
+        .issue.punctuation { border-left-color: #ffa726; }
+        
+        .issue-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .issue-title {
+            font-weight: bold;
+            color: #fff;
+            flex: 1;
+        }
+        
+        .issue-confidence {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+        }
+        
+        .issue-message {
+            color: #ddd;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .suggestions {
+            color: #4CAF50;
+            font-style: italic;
+            margin-bottom: 8px;
+        }
+        
+        .contextual-reason {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #e8f5e8;
+        }
+        
+        .quality-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .quality-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .quality-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+        }
+        
+        .quality-score {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 5px;
+        }
+        
+        .quality-label {
+            color: #ddd;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .quality-trend {
+            padding: 4px 8px;
+            border-radius: 8px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .trend-improving { background: rgba(76, 175, 80, 0.3); color: #4CAF50; }
+        .trend-stable { background: rgba(255, 193, 7, 0.3); color: #FFC107; }
+        .trend-declining { background: rgba(244, 67, 54, 0.3); color: #F44336; }
+        
+        .insights-section {
+            margin-top: 25px;
+        }
+        
+        .insight {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #2196F3;
+        }
+        
+        .insight.high { border-left-color: #F44336; }
+        .insight.medium { border-left-color: #FF9800; }
+        .insight.low { border-left-color: #4CAF50; }
+        
+        .insight-header {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .priority-badge {
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7em;
+            text-transform: uppercase;
+        }
+        
+        .priority-high { background: #F44336; }
+        .priority-medium { background: #FF9800; }
+        .priority-low { background: #4CAF50; }
+        
+        .performance-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .metric {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #bbb;
+            margin-top: 5px;
+        }
+        
+        .privacy-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(76, 175, 80, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .privacy-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .privacy-log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+        }
+        
+        .log-entry {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        
+        .log-timestamp {
+            color: #4CAF50;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #4CAF50;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ffcccb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #4CAF50;
+            color: #90EE90;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .toggle input {
+            width: 20px;
+            height: 20px;
+        }
+        
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌟 Ultimate Grammar System V2</h1>
+        <div class="subtitle">Next-Generation Grammar Checking with AI-Powered Insights</div>
+        <div class="features-badge">
+            <span class="badge">🚀 Incremental Processing</span>
+            <span class="badge">🧠 Contextual Reasoning</span>
+            <span class="badge">🔒 100% Privacy</span>
+            <span class="badge">🏛️ Community Rules</span>
+            <span class="badge">📊 Quality Insights</span>
+            <span class="badge">⚡ Sub-800ms</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="test-section">
+                <div class="section-title">
+                    ✍️ Smart Text Analysis
+                </div>
+                <textarea class="test-input" id="mainText" placeholder="Enter your text for advanced grammar analysis...">
+The cats is very hungry and they wants to eat there dinner. I definately think this are working good now. Between you and I, this sentence have many errors that could of been avoided. Furthermore, the system should analyze the formality and context of this text to provide appropriate suggestions.
+                </textarea>
+                
+                <div class="button-group">
+                    <button class="btn" onclick="runSmartAnalysis()">
+                        🔍 Smart Analysis
+                    </button>
+                    <button class="btn" onclick="runIncrementalTest()">
+                        ⚡ Incremental Test
+                    </button>
+                    <button class="btn secondary" onclick="runPerformanceTest()">
+                        📊 Performance Test
+                    </button>
+                </div>
+                
+                <div class="toggle">
+                    <input type="checkbox" id="contextualReasoning" checked>
+                    <label>🧠 Enable Contextual Reasoning</label>
+                </div>
+                
+                <div class="toggle">
+                    <input type="checkbox" id="communityRules" checked>
+                    <label>🏛️ Use Community Rules</label>
+                </div>
+                
+                <div class="toggle">
+                    <input type="checkbox" id="privacyAudit">
+                    <label>🔒 Enable Privacy Audit</label>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <div class="section-title">
+                    📊 Quality Dashboard
+                </div>
+                <div class="quality-dashboard" id="qualityDashboard">
+                    <!-- Quality metrics will be populated here -->
+                </div>
+            </div>
+
+            <div class="test-section">
+                <div class="section-title">
+                    💡 Actionable Insights
+                </div>
+                <div class="insights-section" id="insightsSection">
+                    <div class="loading">Run analysis to see personalized writing insights</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="test-section">
+                <div class="section-title">
+                    🎯 Analysis Results
+                </div>
+                <div class="results-panel" id="resultsPanel">
+                    <div class="loading">Ready for analysis...</div>
+                </div>
+            </div>
+
+            <div class="test-section">
+                <div class="section-title">
+                    ⚡ Performance Metrics
+                </div>
+                <div class="performance-metrics" id="performanceMetrics">
+                    <!-- Performance metrics will be populated here -->
+                </div>
+            </div>
+
+            <div class="privacy-panel" id="privacyPanel" style="display: none;">
+                <div class="privacy-header">
+                    🔒 Privacy Audit Log
+                </div>
+                <div class="privacy-log" id="privacyLog">
+                    <!-- Privacy logs will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        let ultimateGrammarV2;
+        let isInitialized = false;
+        
+        // Initialize the Ultimate Grammar System V2
+        async function initializeSystem() {
+            try {
+                console.log('🌟 Initializing Ultimate Grammar System V2...');
+                
+                const module = await import('./src/services/UltimateGrammarSystemV2.js');
+                const UltimateGrammarSystemV2 = module.default;
+                ultimateGrammarV2 = new UltimateGrammarSystemV2();
+                
+                // Enable privacy audit if requested
+                if (document.getElementById('privacyAudit').checked) {
+                    ultimateGrammarV2.enablePrivacyAudit();
+                    showPrivacyPanel();
+                }
+                
+                const success = await ultimateGrammarV2.initialize();
+                
+                if (success) {
+                    isInitialized = true;
+                    showSuccess('🚀 Ultimate Grammar System V2 initialized successfully!');
+                    updatePerformanceMetrics();
+                } else {
+                    showError('⚠️ System initialized with limited functionality');
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize Ultimate Grammar System V2:', error);
+                showError(`Failed to load system: ${error.message}`);
+            }
+        }
+        
+        // Smart Analysis with all advanced features
+        window.runSmartAnalysis = async function() {
+            if (!isInitialized) {
+                showError('System not initialized. Please wait...');
+                return;
+            }
+            
+            const text = document.getElementById('mainText').value.trim();
+            if (!text) {
+                showError('Please enter some text to analyze');
+                return;
+            }
+            
+            showLoading('🧠 Running advanced analysis with contextual reasoning...');
+            
+            try {
+                const startTime = Date.now();
+                
+                const result = await ultimateGrammarV2.checkTextIncremental(text, {
+                    categories: ['grammar', 'spelling', 'style', 'clarity', 'punctuation'],
+                    contextualReasoning: document.getElementById('contextualReasoning').checked,
+                    communityRules: document.getElementById('communityRules').checked
+                });
+                
+                const endTime = Date.now();
+                
+                console.log('✅ Ultimate Grammar V2 Results:', result);
+                
+                displayAdvancedResults(result);
+                updateQualityDashboard(result.qualityScore);
+                updateInsights(result.insights);
+                updatePerformanceMetrics(result.performance);
+                
+                if (document.getElementById('privacyAudit').checked) {
+                    updatePrivacyLog();
+                }
+                
+            } catch (error) {
+                console.error('❌ Smart analysis failed:', error);
+                showError(`Analysis failed: ${error.message}`);
+            }
+        };
+        
+        // Incremental Processing Test
+        window.runIncrementalTest = async function() {
+            if (!isInitialized) {
+                showError('System not initialized');
+                return;
+            }
+            
+            showLoading('⚡ Testing incremental processing...');
+            
+            const baseText = "This is a test sentence.";
+            const modifications = [
+                "This is a test sentence with an error.",
+                "This is a test sentence with multiple errors and mistakes.",
+                "This is a test sentence with multiple errors, mistakes, and issues."
+            ];
+            
+            const results = [];
+            
+            try {
+                // First check
+                let result = await ultimateGrammarV2.checkTextIncremental(baseText);
+                results.push({ text: baseText, time: result.performance.processingTime, incremental: false });
+                
+                // Incremental checks
+                for (const modText of modifications) {
+                    result = await ultimateGrammarV2.checkTextIncremental(modText);
+                    results.push({ 
+                        text: modText, 
+                        time: result.performance.processingTime, 
+                        incremental: result.performance.incrementalHit 
+                    });
+                }
+                
+                displayIncrementalResults(results);
+                
+            } catch (error) {
+                console.error('❌ Incremental test failed:', error);
+                showError(`Incremental test failed: ${error.message}`);
+            }
+        };
+        
+        // Performance Benchmark
+        window.runPerformanceTest = async function() {
+            if (!isInitialized) {
+                showError('System not initialized');
+                return;
+            }
+            
+            showLoading('📊 Running comprehensive performance benchmark...');
+            
+            const testTexts = [
+                "Short text test.",
+                "This is a medium length text with several sentences. It contains various types of potential errors including grammar mistakes, spelling erors, and style issues.",
+                "This is a comprehensive test of the Ultimate Grammar System V2 with a much longer text that includes multiple paragraphs, complex sentence structures, and various linguistic challenges. The system should be able to process this text efficiently while maintaining high accuracy in detection of grammar errors, spelling mistakes, punctuation issues, and style improvements. Furthermore, it should provide contextual reasoning and actionable insights for improvement.",
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."
+            ];
+            
+            const benchmarkResults = [];
+            
+            try {
+                for (let i = 0; i < testTexts.length; i++) {
+                    const startTime = Date.now();
+                    const result = await ultimateGrammarV2.checkTextIncremental(testTexts[i]);
+                    const endTime = Date.now();
+                    
+                    benchmarkResults.push({
+                        textLength: testTexts[i].length,
+                        processingTime: endTime - startTime,
+                        issuesFound: result.issues.length,
+                        qualityScore: result.qualityScore.overall,
+                        enginesUsed: result.performance.enginesUsed.length
+                    });
+                }
+                
+                displayBenchmarkResults(benchmarkResults);
+                
+            } catch (error) {
+                console.error('❌ Performance test failed:', error);
+                showError(`Performance test failed: ${error.message}`);
+            }
+        };
+        
+        // Display Functions
+        function displayAdvancedResults(result) {
+            const panel = document.getElementById('resultsPanel');
+            
+            if (result.issues.length === 0) {
+                panel.innerHTML = `
+                    <div class="success">
+                        ✨ Excellent! No issues found in your text.
+                        <br>Quality Score: ${result.qualityScore.overall}/100
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="success">
+                    🎯 Found ${result.issues.length} issues with advanced analysis
+                    <br>Processing: ${result.performance.processingTime}ms | Quality: ${result.qualityScore.overall}/100
+                </div>
+            `;
+            
+            result.issues.forEach((issue, index) => {
+                const contextualInfo = issue.contextualReason ? 
+                    `<div class="contextual-reason">💡 ${issue.contextualReason}</div>` : '';
+                
+                const clusteredInfo = issue.clusteredCount > 1 ? 
+                    `<span style="color: #FFC107;">(Merged ${issue.clusteredCount} similar issues)</span>` : '';
+                
+                const suggestions = issue.suggestions && issue.suggestions.length > 0 
+                    ? `<div class="suggestions">💡 Suggestions: ${issue.suggestions.slice(0, 3).join(', ')}</div>` 
+                    : '';
+                
+                html += `
+                    <div class="issue ${issue.type}">
+                        <div class="issue-header">
+                            <div class="issue-title">
+                                ${index + 1}. ${issue.shortMessage || issue.type} ${clusteredInfo}
+                            </div>
+                            <div class="issue-confidence">
+                                ${Math.round((issue.confidence || 0.8) * 100)}%
+                            </div>
+                        </div>
+                        <div class="issue-message">${issue.message}</div>
+                        <div style="color: #aaa; font-size: 0.9em;">
+                            "${issue.originalText || 'N/A'}" | Source: ${issue.source || 'unknown'}
+                        </div>
+                        ${suggestions}
+                        ${contextualInfo}
+                    </div>
+                `;
+            });
+            
+            panel.innerHTML = html;
+        }
+        
+        function updateQualityDashboard(qualityScore) {
+            const dashboard = document.getElementById('qualityDashboard');
+            
+            const scores = {
+                'Overall': qualityScore.overall,
+                'Grammar': qualityScore.breakdown.grammar || 0,
+                'Style': qualityScore.breakdown.style || 0,
+                'Clarity': qualityScore.breakdown.clarity || 0,
+                'Tone': qualityScore.breakdown.tone || 0,
+                'Readability': qualityScore.breakdown.readability || 0
+            };
+            
+            dashboard.innerHTML = Object.entries(scores).map(([label, score]) => `
+                <div class="quality-card">
+                    <div class="quality-score">${Math.round(score)}</div>
+                    <div class="quality-label">${label}</div>
+                    <div class="quality-trend trend-${qualityScore.trend}">
+                        ${qualityScore.trend}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateInsights(insights) {
+            const section = document.getElementById('insightsSection');
+            
+            if (!insights || insights.length === 0) {
+                section.innerHTML = '<div class="loading">No specific insights available</div>';
+                return;
+            }
+            
+            section.innerHTML = insights.map(insight => `
+                <div class="insight ${insight.priority}">
+                    <div class="insight-header">
+                        <span>${insight.category.toUpperCase()}</span>
+                        <span class="priority-badge priority-${insight.priority}">
+                            ${insight.priority}
+                        </span>
+                    </div>
+                    <div style="margin-bottom: 8px; font-weight: bold;">${insight.message}</div>
+                    <div style="margin-bottom: 8px;">${insight.action}</div>
+                    <div style="color: #4CAF50; font-style: italic;">${insight.impact}</div>
+                </div>
+            `).join('');
+        }
+        
+        function updatePerformanceMetrics(performance) {
+            const metricsPanel = document.getElementById('performanceMetrics');
+            const stats = ultimateGrammarV2.getAdvancedStatistics();
+            
+            const metrics = {
+                'Processing Time': performance ? `${performance.processingTime}ms` : '0ms',
+                'Total Checks': stats.totalChecks,
+                'Cache Efficiency': `${Math.round(stats.cacheEfficiency || 0)}%`,
+                'Engines Active': stats.engines.length,
+                'Community Rules': stats.communityRules,
+                'Privacy Status': '100% Local'
+            };
+            
+            metricsPanel.innerHTML = Object.entries(metrics).map(([label, value]) => `
+                <div class="metric">
+                    <div class="metric-value">${value}</div>
+                    <div class="metric-label">${label}</div>
+                </div>
+            `).join('');
+        }
+        
+        function updatePrivacyLog() {
+            const auditReport = ultimateGrammarV2.getPrivacyAuditReport();
+            const logPanel = document.getElementById('privacyLog');
+            
+            logPanel.innerHTML = auditReport.logs.slice(-10).map(log => `
+                <div class="log-entry">
+                    <span class="log-timestamp">${new Date(log.timestamp).toLocaleTimeString()}</span>
+                    ${log.action}: ${log.details}
+                </div>
+            `).join('');
+        }
+        
+        function showPrivacyPanel() {
+            document.getElementById('privacyPanel').style.display = 'block';
+        }
+        
+        function showLoading(message) {
+            document.getElementById('resultsPanel').innerHTML = `<div class="loading">${message}</div>`;
+        }
+        
+        function showError(message) {
+            document.getElementById('resultsPanel').innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        function showSuccess(message) {
+            document.getElementById('resultsPanel').innerHTML = `<div class="success">${message}</div>`;
+        }
+        
+        function displayIncrementalResults(results) {
+            const panel = document.getElementById('resultsPanel');
+            
+            let html = '<div class="success">⚡ Incremental Processing Test Results</div>';
+            
+            results.forEach((result, index) => {
+                const speedup = index > 0 && results[0].time > 0 ? 
+                    ` (${((results[0].time / result.time) * 100).toFixed(0)}% of original)` : '';
+                
+                html += `
+                    <div class="issue">
+                        <div class="issue-header">
+                            <div class="issue-title">Test ${index + 1} - ${result.time}ms ${speedup}</div>
+                            <div class="issue-confidence">
+                                ${result.incremental ? 'INCREMENTAL' : 'FULL'}
+                            </div>
+                        </div>
+                        <div class="issue-message">Text: "${result.text.substring(0, 50)}..."</div>
+                    </div>
+                `;
+            });
+            
+            panel.innerHTML = html;
+        }
+        
+        function displayBenchmarkResults(results) {
+            const panel = document.getElementById('resultsPanel');
+            const avgTime = results.reduce((sum, r) => sum + r.processingTime, 0) / results.length;
+            
+            let html = `<div class="success">📊 Performance Benchmark Complete - Average: ${avgTime.toFixed(1)}ms</div>`;
+            
+            results.forEach((result, index) => {
+                html += `
+                    <div class="issue">
+                        <div class="issue-header">
+                            <div class="issue-title">Test ${index + 1} - ${result.processingTime}ms</div>
+                            <div class="issue-confidence">Score: ${result.qualityScore}</div>
+                        </div>
+                        <div class="issue-message">
+                            Length: ${result.textLength} chars | Issues: ${result.issuesFound} | Engines: ${result.enginesUsed}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            panel.innerHTML = html;
+        }
+        
+        // Privacy audit toggle
+        document.getElementById('privacyAudit').addEventListener('change', function() {
+            if (this.checked && ultimateGrammarV2) {
+                ultimateGrammarV2.enablePrivacyAudit();
+                showPrivacyPanel();
+            } else {
+                document.getElementById('privacyPanel').style.display = 'none';
+            }
+        });
+        
+        // Initialize on page load
+        window.addEventListener('load', initializeSystem);
+    </script>
+</body>
+</html> 

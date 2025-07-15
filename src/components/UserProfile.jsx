@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotes } from '../context/NotesContext';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { useTheme } from '../context/ThemeContext';
@@ -70,16 +71,61 @@ const AVATAR_OPTIONS = [
   }
 ];
 
-// Usage preference options
+// Usage preference options - matches onboarding exactly
 const USAGE_OPTIONS = [
-  { id: 'personal', label: 'Personal Notes' },
-  { id: 'work', label: 'Work Notes' },
-  { id: 'study', label: 'Study Notes' },
-  { id: 'creative', label: 'Creative Writing' },
-  { id: 'journal', label: 'Journaling' },
-  { id: 'research', label: 'Research' },
-  { id: 'planning', label: 'Planning' },
-  { id: 'ideas', label: 'Ideas & Inspiration' }
+  {
+    id: 'personal',
+    name: 'Personal',
+    label: 'Personal Notes',
+    description: 'For your personal notes and tasks',
+    color: 'bg-gradient-to-br from-blue-400 to-indigo-500'
+  },
+  {
+    id: 'work',
+    name: 'Work',
+    label: 'Work Notes',
+    description: 'For work-related projects and tasks',
+    color: 'bg-gradient-to-br from-green-400 to-teal-500'
+  },
+  {
+    id: 'education',
+    name: 'Education',
+    label: 'Study Notes',
+    description: 'For studying and learning',
+    color: 'bg-gradient-to-br from-purple-400 to-pink-500'
+  },
+  {
+    id: 'creative',
+    name: 'Creative',
+    label: 'Creative Writing',
+    description: 'For artistic projects and ideas',
+    color: 'bg-gradient-to-br from-yellow-400 to-orange-500'
+  }
+];
+
+// Theme options matching onboarding
+const THEME_OPTIONS = [
+  {
+    id: 'light',
+    name: 'Light Mode',
+    color: 'bg-gradient-to-br from-yellow-300 to-orange-400',
+    background: 'bg-white',
+    text: 'text-gray-900'
+  },
+  {
+    id: 'dark',
+    name: 'Dark Mode',
+    color: 'bg-gradient-to-br from-indigo-500 to-purple-600',
+    background: 'bg-gray-900',
+    text: 'text-white'
+  },
+  {
+    id: 'auto',
+    name: 'System Default',
+    color: 'bg-gradient-to-br from-gray-400 to-blue-500',
+    background: 'bg-gradient-to-br from-gray-100 to-white dark:from-gray-900 dark:to-gray-800',
+    text: 'text-gray-900 dark:text-white'
+  }
 ];
 
 // Profanity filter for name input
@@ -99,8 +145,10 @@ const containsProfanity = (text) => {
 
 const UserProfile = () => {
   const { currentUser, userProfile, updateUserProfile } = useAuth();
+  const { notes, trashedNotes } = useNotes();
   const [name, setName] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(null);
+  const [selectedTheme, setSelectedTheme] = useState(THEME_OPTIONS[0]);
   const [usagePreferences, setUsagePreferences] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -122,6 +170,12 @@ const UserProfile = () => {
       );
       setSelectedAvatar(avatarOption || AVATAR_OPTIONS[0]);
       
+      // Find theme by ID
+      const themeOption = THEME_OPTIONS.find(
+        theme => theme.id === userProfile.theme
+      );
+      setSelectedTheme(themeOption || THEME_OPTIONS[0]);
+      
       // Set usage preferences
       setUsagePreferences(userProfile.usagePreferences || []);
     }
@@ -137,6 +191,10 @@ const UserProfile = () => {
           avatar => avatar.image === userProfile.photoURL
         );
         setSelectedAvatar(avatarOption || AVATAR_OPTIONS[0]);
+        const themeOption = THEME_OPTIONS.find(
+          theme => theme.id === userProfile.theme
+        );
+        setSelectedTheme(themeOption || THEME_OPTIONS[0]);
         setUsagePreferences(userProfile.usagePreferences || []);
       }
       // Clear any errors
@@ -168,6 +226,11 @@ const UserProfile = () => {
     } else {
       setNameError('');
     }
+  };
+
+  // Handle theme selection
+  const handleThemeSelect = (theme) => {
+    setSelectedTheme(theme);
   };
 
   // Handle usage preference toggle
@@ -210,13 +273,14 @@ const UserProfile = () => {
       const updateData = {
         displayName: name.trim(),
         photoURL: selectedAvatar.image,
+        theme: selectedTheme.id,
         usagePreferences: usagePreferences,
         updatedAt: new Date().toISOString()
       };
       
       // Update Firestore document
       if (currentUser) {
-        await updateDoc(doc(db, "users", currentUser.uid), updateData);
+        await updateDoc(doc(db, "userProfiles", currentUser.uid), updateData);
       }
       
       // Update context
@@ -393,6 +457,63 @@ const UserProfile = () => {
               >
                 {currentUser?.email || 'No email'}
               </motion.p>
+              
+              {/* Account Statistics */}
+              <motion.div 
+                className="mt-6 grid grid-cols-3 gap-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className="text-center">
+                  <motion.div 
+                    className="text-2xl font-bold text-purple-600 dark:text-purple-400"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatType: "reverse" }}
+                  >
+                    {notes?.length || 0}
+                  </motion.div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Notes</div>
+                </div>
+                <div className="text-center">
+                  <motion.div 
+                    className="text-2xl font-bold text-red-500 dark:text-red-400"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", delay: 0.5 }}
+                  >
+                    {trashedNotes?.length || 0}
+                  </motion.div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">In Trash</div>
+                </div>
+                <div className="text-center">
+                  <motion.div 
+                    className="text-2xl font-bold text-green-600 dark:text-green-400"
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatType: "reverse", delay: 1 }}
+                  >
+                    {userProfile?.createdAt ? Math.floor((new Date() - new Date(userProfile.createdAt.seconds * 1000)) / (1000 * 60 * 60 * 24)) || 0 : 0}
+                  </motion.div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Days Active</div>
+                </div>
+              </motion.div>
+              
+              {/* Join Date */}
+              {userProfile?.createdAt && (
+                <motion.div 
+                  className="mt-4 text-center"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Member since {new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                </motion.div>
+              )}
             </div>
           </div>
           
@@ -454,6 +575,65 @@ const UserProfile = () => {
             )}
           </AnimatePresence>
           
+          {/* Theme preferences section */}
+          <div className="px-6 py-6 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                Theme Preference
+              </h3>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-3">
+              {THEME_OPTIONS.map((theme) => (
+                <motion.div
+                  key={theme.id}
+                  className={`rounded-xl p-4 cursor-pointer border-2 transition-all duration-200 ${
+                    selectedTheme.id === theme.id
+                      ? 'border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                  } ${!isEditing ? 'opacity-60' : ''}`}
+                  whileHover={isEditing ? { scale: 1.03, y: -2 } : {}}
+                  onClick={() => isEditing && handleThemeSelect(theme)}
+                >
+                  <div className="flex flex-col items-center text-center">
+                    <div className={`w-8 h-8 rounded-full ${theme.color} mb-2 flex items-center justify-center`}>
+                      {theme.id === 'light' && (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                      )}
+                      {theme.id === 'dark' && (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                      )}
+                      {theme.id === 'auto' && (
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {theme.name}
+                    </span>
+                    {selectedTheme.id === theme.id && (
+                      <motion.div 
+                        className="mt-2 bg-purple-500 text-white p-1 rounded-full"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      </motion.div>
+                    )}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+          
           {/* Usage preferences */}
           <div className="px-6 py-6 border-t border-gray-200 dark:border-gray-700">
             <div className="flex justify-between items-center mb-4">
@@ -502,6 +682,75 @@ const UserProfile = () => {
                   </div>
                 </motion.div>
               ))}
+            </div>
+          </div>
+          
+          {/* Quick Settings Section */}
+          <div className="px-6 py-6 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">
+              Account Details
+            </h3>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Last Login */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">Last Active</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Today</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Account Type */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">Account Type</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Free User</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Storage Used */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">Storage</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{((notes?.length || 0) * 0.5).toFixed(1)} KB used</div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Language */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mr-3">
+                    <svg className="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">Language</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">English (US)</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           

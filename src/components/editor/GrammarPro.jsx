@@ -11,73 +11,84 @@
  * - Accessibility-first design
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import grammarEngine, { GRAMMAR_CATEGORIES } from '../../services/GrammarEngine';
+import { CheckCircle2, AlertTriangle, BarChart3, Sparkles, Zap, X } from 'lucide-react';
+// PRIVACY FIX: Replace GrammarEngine (external API) with AdvancedGrammarService (offline)
+import AdvancedGrammarService from '../../services/AdvancedGrammarService';
 
-const GrammarPro = ({ editor, content, onContentUpdate }) => {
-  // Core state
+// Create instance of AdvancedGrammarService
+const advancedGrammarService = new AdvancedGrammarService();
+
+const GrammarPro = ({ editor, content, isVisible, onToggle }) => {
+  const [issues, setIssues] = useState([]);
+  const [analysis, setAnalysis] = useState(null);
+  const [isChecking, setIsChecking] = useState(false);
   const [isActive, setIsActive] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
-  const [issues, setIssues] = useState([]);
-  const [isChecking, setIsChecking] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
   const [selectedIssue, setSelectedIssue] = useState(null);
-  
-  // UI state
   const [writingScore, setWritingScore] = useState(85);
-  const [showTooltip, setShowTooltip] = useState(false);
-  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  const [activeTab, setActiveTab] = useState('issues');
-  
-  // Performance state
   const [statistics, setStatistics] = useState({
     totalChecks: 0,
     averageScore: 85,
     improvementTrend: 0
   });
 
-  // Refs
-  const panelRef = useRef(null);
-  const buttonRef = useRef(null);
   const lastContentRef = useRef('');
+  const panelRef = useRef(null);
 
-  // Initialize grammar engine integration
+  // GRAMMAR CATEGORIES for UI consistency
+  const GRAMMAR_CATEGORIES = {
+    grammar: {
+      id: 'grammar',
+      name: 'Grammar',
+      color: 'red',
+      icon: '⚠️',
+      description: 'Grammar and syntax errors'
+    },
+    spelling: {
+      id: 'spelling',
+      name: 'Spelling',
+      color: 'orange',
+      icon: '🔤',
+      description: 'Spelling mistakes'
+    },
+    style: {
+      id: 'style',
+      name: 'Style',
+      color: 'blue',
+      icon: '✨',
+      description: 'Style and clarity improvements'
+    },
+    punctuation: {
+      id: 'punctuation',
+      name: 'Punctuation',
+      color: 'purple',
+      icon: '❗',
+      description: 'Punctuation errors'
+    }
+  };
+
+  // Initialize the advanced grammar service
   useEffect(() => {
-    // Set up event listeners
-    const handleIssuesFound = (data) => {
-      console.log('📋 Issues found:', data);
+    const initializeGrammar = async () => {
+      try {
+        console.log('🚀 GrammarPro: Initializing AdvancedGrammarService (offline)...');
+        const initialized = await advancedGrammarService.initialize();
+        if (initialized) {
+          console.log('✅ GrammarPro: AdvancedGrammarService ready');
+        } else {
+          console.warn('⚠️ GrammarPro: AdvancedGrammarService initialization failed');
+        }
+      } catch (error) {
+        console.error('❌ GrammarPro: Error initializing AdvancedGrammarService:', error);
+      }
     };
-
-    const handleCheckStarted = () => {
-      setIsChecking(true);
-    };
-
-    const handleCheckCompleted = () => {
-      setIsChecking(false);
-    };
-
-    const handleError = (error) => {
-      console.error('Grammar error:', error);
-      setIsChecking(false);
-    };
-
-    // Register event listeners
-    grammarEngine.on('issuesFound', handleIssuesFound);
-    grammarEngine.on('checkStarted', handleCheckStarted);
-    grammarEngine.on('checkCompleted', handleCheckCompleted);
-    grammarEngine.on('error', handleError);
-
-    return () => {
-      // Cleanup
-      grammarEngine.off('issuesFound', handleIssuesFound);
-      grammarEngine.off('checkStarted', handleCheckStarted);
-      grammarEngine.off('checkCompleted', handleCheckCompleted);
-      grammarEngine.off('error', handleError);
-    };
+    
+    initializeGrammar();
   }, []);
 
-  // Debounced grammar checking
+  // PRIVACY-SAFE grammar checking using offline AdvancedGrammarService
   const performGrammarCheck = useCallback(async (text) => {
     if (!text || text.trim().length < 10 || text === lastContentRef.current) {
       return;
@@ -87,29 +98,52 @@ const GrammarPro = ({ editor, content, onContentUpdate }) => {
 
     try {
       setIsChecking(true);
-      const result = await grammarEngine.checkText(text, {
-        context: 'general',
-        enableCache: true,
-        enableIncremental: true
+      console.log('🔍 GrammarPro: Checking grammar with offline AdvancedGrammarService...');
+      
+      // Use OFFLINE AdvancedGrammarService instead of external API
+      const result = await advancedGrammarService.checkText(text, {
+        categories: ['grammar', 'spelling', 'style', 'punctuation'],
+        language: 'en-US'
       });
 
-      setIssues(result.issues || []);
-      setAnalysis(result.analysis || null);
+      // Extract issues from the result
+      const grammarIssues = result.issues || result || [];
       
-      if (result.analysis) {
-        setWritingScore(result.analysis.writingScore || 85);
-      }
+      setIssues(grammarIssues);
+      
+      // Calculate writing score based on issues
+      const totalWords = text.split(/\s+/).length;
+      const errorRate = grammarIssues.length / Math.max(totalWords, 1);
+      const calculatedScore = Math.max(20, Math.min(100, 100 - (errorRate * 200)));
+      setWritingScore(Math.round(calculatedScore));
+
+      // Create analysis object
+      const analysisData = {
+        writingScore: Math.round(calculatedScore),
+        totalIssues: grammarIssues.length,
+        categories: grammarIssues.reduce((acc, issue) => {
+          acc[issue.category] = (acc[issue.category] || 0) + 1;
+          return acc;
+        }, {}),
+        readability: 'Good', // Simplified for now
+        suggestions: grammarIssues.length > 0 ? `Found ${grammarIssues.length} suggestions for improvement` : 'Great writing!'
+      };
+      
+      setAnalysis(analysisData);
 
       // Update statistics
       setStatistics(prev => ({
         totalChecks: prev.totalChecks + 1,
-        averageScore: Math.round((prev.averageScore + (result.analysis?.writingScore || 85)) / 2),
-        improvementTrend: result.analysis?.writingScore > prev.averageScore ? 1 : -1
+        averageScore: Math.round((prev.averageScore + calculatedScore) / 2),
+        improvementTrend: calculatedScore > prev.averageScore ? 1 : -1
       }));
 
+      console.log(`✅ GrammarPro: Found ${grammarIssues.length} issues, score: ${Math.round(calculatedScore)}`);
+
     } catch (error) {
-      console.error('Grammar check failed:', error);
+      console.error('❌ GrammarPro: Grammar check failed:', error);
       setIssues([]);
+      setAnalysis(null);
     } finally {
       setIsChecking(false);
     }
@@ -141,473 +175,226 @@ const GrammarPro = ({ editor, content, onContentUpdate }) => {
   }, [content, performGrammarCheck]);
 
   // Apply suggestion
-  const applySuggestion = useCallback((issue, suggestion) => {
-    if (!editor || !onContentUpdate) return;
+  const applySuggestion = useCallback((issue) => {
+    if (!editor || !issue.suggestions || issue.suggestions.length === 0) return;
 
     try {
-      // Apply suggestion using grammar engine
-      const newText = grammarEngine.applySuggestion(content, issue, suggestion);
-      
-      // Update editor
-      editor.commands.setContent(newText);
-      onContentUpdate(newText);
-      
-      // Remove issue from list
+      const suggestion = issue.suggestions[0];
+      const from = issue.offset;
+      const to = issue.offset + issue.length;
+
+      // Use TipTap's replace command for proper undo/redo support
+      editor.chain()
+        .focus()
+        .setTextSelection({ from, to })
+        .insertContent(suggestion)
+        .run();
+
+      // Remove the fixed issue from the list
       setIssues(prev => prev.filter(i => i.id !== issue.id));
       
-      console.log('✅ Applied suggestion:', suggestion.text);
+      console.log(`✅ GrammarPro: Applied suggestion "${suggestion}" for issue "${issue.message}"`);
     } catch (error) {
-      console.error('Failed to apply suggestion:', error);
+      console.error('❌ GrammarPro: Error applying suggestion:', error);
     }
-  }, [editor, content, onContentUpdate]);
+  }, [editor]);
 
-  // Dismiss issue
-  const dismissIssue = useCallback((issue) => {
-    setIssues(prev => prev.filter(i => i.id !== issue.id));
-    grammarEngine.dismissIssue(issue.id);
-  }, []);
-
-  // Auto-fix issues
-  const handleAutoFix = useCallback(() => {
-    const autoFixableIssues = grammarEngine.getAutoFixSuggestions(issues);
-    
-    if (autoFixableIssues.length > 0) {
-      const newText = grammarEngine.batchApplySuggestions(
-        content, 
-        autoFixableIssues
-      );
-      
-      editor.commands.setContent(newText);
-      onContentUpdate(newText);
-      
-      // Remove fixed issues
-      const fixedIds = autoFixableIssues.map(fix => fix.issue.id);
-      setIssues(prev => prev.filter(issue => !fixedIds.includes(issue.id)));
-    }
-  }, [issues, content, editor, onContentUpdate]);
-
-  // Get issue statistics
-  const getIssueStats = useCallback(() => {
-    return issues.reduce((acc, issue) => {
-      acc[issue.category] = (acc[issue.category] || 0) + 1;
-      acc.total = (acc.total || 0) + 1;
-      return acc;
-    }, {});
-  }, [issues]);
-
-  // Get score color
-  const getScoreColor = (score) => {
-    if (score >= 90) return 'text-green-600 dark:text-green-400';
-    if (score >= 70) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+  // Get category info
+  const getCategoryInfo = (category) => {
+    return GRAMMAR_CATEGORIES[category] || GRAMMAR_CATEGORIES.grammar;
   };
 
-  // Get score description
-  const getScoreDescription = (score) => {
-    if (score >= 95) return 'Exceptional';
-    if (score >= 85) return 'Excellent';
-    if (score >= 75) return 'Good';
-    if (score >= 65) return 'Fair';
-    return 'Needs Work';
+  // Get severity color
+  const getSeverityColor = (severity) => {
+    switch (severity) {
+      case 'error': return 'red';
+      case 'warning': return 'yellow';
+      case 'info': return 'blue';
+      default: return 'gray';
+    }
   };
-
-  const issueStats = getIssueStats();
-  const totalIssues = issues.length;
-  const autoFixableCount = issues.filter(i => i.metadata?.autoFixable).length;
 
   return (
     <>
-      {/* Minimalist Grammar Button */}
+      {/* Floating Grammar Button */}
       <motion.button
-        ref={buttonRef}
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
         onClick={handleToggleGrammar}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        className={`relative flex items-center space-x-2 px-4 py-2 rounded-2xl border-2 transition-all duration-300 shadow-lg backdrop-blur-sm ${
+        className={`fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg z-50 flex items-center justify-center transition-all duration-300 ${
           isActive 
-            ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-emerald-400 shadow-emerald-200 dark:shadow-emerald-800' 
-            : 'bg-white/80 dark:bg-gray-800/80 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-50/90 dark:hover:bg-gray-700/90 hover:border-gray-300 dark:hover:border-gray-500'
+            ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' 
+            : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700'
         }`}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        style={{ zIndex: 1000 }}
       >
-        {/* Icon */}
-        <motion.span 
-          className="text-lg"
-          animate={{ rotate: isActive ? 360 : 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          {isActive ? '✨' : '📝'}
-        </motion.span>
-        
-        {/* Text and Score */}
-        <div className="flex flex-col items-start">
-          <span className="text-sm font-semibold">
-            {isActive ? 'Grammar Pro' : 'Grammar'}
-          </span>
-          {isActive && (
-            <span className="text-xs opacity-90">
-              Score: {writingScore}/100
-            </span>
-          )}
-        </div>
-        
-        {/* Issue Count Badge */}
-        <AnimatePresence>
-          {isActive && totalIssues > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold shadow-lg"
-            >
-              {totalIssues}
-            </motion.span>
-          )}
-        </AnimatePresence>
-
-        {/* Checking Indicator */}
-        {isChecking && (
+        {isChecking ? (
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="absolute -top-1 -right-1 w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-          />
+          >
+            <Sparkles size={20} />
+          </motion.div>
+        ) : (
+          <Zap size={20} />
+        )}
+        
+        {/* Issue count badge */}
+        {issues.length > 0 && (
+          <motion.span
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold"
+          >
+            {issues.length}
+          </motion.span>
         )}
       </motion.button>
 
-      {/* Tooltip */}
+      {/* Grammar Panel */}
       <AnimatePresence>
-        {showTooltip && !showPanel && (
+        {showPanel && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-black text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap z-50"
+            ref={panelRef}
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            className="fixed top-0 right-0 w-96 h-full bg-white dark:bg-gray-900 shadow-2xl z-40 overflow-y-auto"
+            style={{ zIndex: 999 }}
           >
-            {isActive ? 'Close Grammar Pro' : 'Open Grammar Pro'}
-            <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Right-Side Panel (Grammarly Style) */}
-      <AnimatePresence>
-        {showPanel && isActive && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-              onClick={() => setShowPanel(false)}
-            />
-            
-            {/* Panel */}
-            <motion.div
-              ref={panelRef}
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed right-0 top-0 h-full w-96 bg-white dark:bg-gray-800 shadow-2xl z-50 flex flex-col border-l border-gray-200 dark:border-gray-700"
-            >
-              {/* Header */}
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-6 flex-shrink-0">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-xl font-bold flex items-center space-x-2">
-                      <span>✨</span>
-                      <span>Grammar Pro</span>
-                    </h2>
-                    <p className="text-sm opacity-90">
-                      {isChecking ? 'Analyzing your writing...' : 
-                       totalIssues === 0 ? 'Your writing looks great!' :
-                       `${totalIssues} suggestion${totalIssues !== 1 ? 's' : ''} found`}
-                    </p>
+            {/* Panel Header */}
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 p-4 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="text-blue-500" size={20} />
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Grammar Pro</h3>
+                  <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-1 rounded">
+                    Offline
+                  </span>
                   </div>
                   <button
                     onClick={() => setShowPanel(false)}
-                    className="text-white/80 hover:text-white text-xl p-2 hover:bg-white/20 rounded-lg transition-colors"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
                   >
-                    ✕
+                  <X size={20} />
                   </button>
                 </div>
 
                 {/* Writing Score */}
-                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm opacity-90">Writing Score</span>
-                    <span className="text-2xl font-bold">{writingScore}/100</span>
+              {analysis && (
+                <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Writing Score</span>
+                    <span className={`text-lg font-bold ${writingScore >= 80 ? 'text-green-600' : writingScore >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                      {writingScore}/100
+                    </span>
                   </div>
-                  <div className="w-full bg-white/20 rounded-full h-2 mb-2">
+                  <div className="mt-2 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <motion.div
+                      className={`h-full rounded-full ${writingScore >= 80 ? 'bg-green-500' : writingScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
                       initial={{ width: 0 }}
                       animate={{ width: `${writingScore}%` }}
                       transition={{ duration: 1, ease: "easeOut" }}
-                      className="bg-white rounded-full h-2"
                     />
                   </div>
-                  <div className="flex justify-between text-xs opacity-90">
-                    <span>{getScoreDescription(writingScore)}</span>
-                    {statistics.improvementTrend > 0 && (
-                      <span className="flex items-center space-x-1">
-                        <span>↗️</span>
-                        <span>Improving</span>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                {totalIssues > 0 && (
-                  <div className="flex space-x-2">
-                    {autoFixableCount > 0 && (
-                      <button
-                        onClick={handleAutoFix}
-                        className="flex-1 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-2 rounded-lg transition-colors backdrop-blur-sm"
-                      >
-                        🔧 Auto-fix ({autoFixableCount})
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setIssues([])}
-                      className="flex-1 bg-white/20 hover:bg-white/30 text-white text-sm px-3 py-2 rounded-lg transition-colors backdrop-blur-sm"
-                    >
-                      🗑️ Clear All
-                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Tab Navigation */}
-              <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                {['issues', 'insights', 'stats'].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-3 px-4 text-sm font-medium capitalize transition-colors ${
-                      activeTab === tab
-                        ? 'text-emerald-600 dark:text-emerald-400 bg-white dark:bg-gray-800 border-b-2 border-emerald-500'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
-                  >
-                    {tab === 'issues' && `Issues (${totalIssues})`}
-                    {tab === 'insights' && 'Insights'}
-                    {tab === 'stats' && 'Stats'}
-                  </button>
-                ))}
-              </div>
-
-              {/* Content Area */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Issues Tab */}
-                {activeTab === 'issues' && (
+            {/* Panel Content */}
                   <div className="p-4">
                     {isChecking ? (
-                      <div className="flex items-center justify-center py-12">
-                        <div className="flex items-center space-x-3 text-gray-500 dark:text-gray-400">
+                <div className="flex items-center justify-center py-8">
                           <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="w-6 h-6 border-2 border-current border-t-transparent rounded-full"
-                          />
-                          <span className="text-lg font-medium">Analyzing...</span>
+                    className="text-blue-500"
+                  >
+                    <Sparkles size={24} />
+                  </motion.div>
+                  <span className="ml-2 text-gray-600 dark:text-gray-400">Checking grammar...</span>
                         </div>
-                      </div>
-                    ) : totalIssues === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <motion.span 
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: 0.2 }}
-                          className="text-6xl mb-4"
-                        >
-                          🎉
-                        </motion.span>
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                          Perfect Writing!
-                        </h3>
-                        <p className="text-gray-500 dark:text-gray-400">
-                          No grammar issues detected in your text.
-                        </p>
+              ) : issues.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="mx-auto text-green-500 mb-2" size={32} />
+                  <p className="text-gray-600 dark:text-gray-400">No grammar issues found!</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">Your writing looks great.</p>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        {Object.entries(GRAMMAR_CATEGORIES).map(([categoryKey, category]) => {
-                          const categoryIssues = issues.filter(issue => issue.category === categoryKey);
-                          if (categoryIssues.length === 0) return null;
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-gray-900 dark:text-white">
+                      Found {issues.length} issue{issues.length !== 1 ? 's' : ''}
+                    </h4>
+                  </div>
+
+                  {issues.map((issue, index) => {
+                    const categoryInfo = getCategoryInfo(issue.category);
+                    const severityColor = getSeverityColor(issue.severity);
 
                           return (
                             <motion.div 
-                              key={categoryKey}
-                              initial={{ opacity: 0, y: 20 }}
+                        key={issue.id || index}
+                        initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.1 }}
-                            >
-                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center space-x-2">
-                                <span className="text-xl">{category.icon}</span>
-                                <span>{category.name}</span>
-                                <span className="text-sm text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
-                                  {categoryIssues.length}
-                                </span>
-                              </h3>
-                              
-                              <div className="space-y-3">
-                                {categoryIssues.map((issue, index) => (
-                                  <motion.div
-                                    key={issue.id}
-                                    initial={{ opacity: 0, x: -20 }}
-                                    animate={{ opacity: 1, x: 0 }}
                                     transition={{ delay: index * 0.1 }}
-                                    className="p-4 rounded-xl bg-gray-50 dark:bg-gray-700 border-l-4 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                                    style={{ borderLeftColor: category.color }}
+                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                   >
-                                    <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg">{categoryInfo.icon}</span>
                                       <div className="flex-1">
-                                        <div className="flex items-center space-x-2 mb-2">
-                                          <span className="font-semibold px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-sm">
-                                            "{issue.originalText}"
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={`text-xs px-2 py-1 rounded bg-${categoryInfo.color}-100 text-${categoryInfo.color}-700 dark:bg-${categoryInfo.color}-900/30 dark:text-${categoryInfo.color}-300`}>
+                                {categoryInfo.name}
                                           </span>
-                                          <span className={`text-xs px-2 py-1 rounded-full ${
-                                            issue.severity === 'critical' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                                            issue.severity === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                                            issue.severity === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                                            'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                          }`}>
-                                            {issue.severity}
+                              <span className={`text-xs px-2 py-1 rounded bg-${severityColor}-100 text-${severityColor}-700 dark:bg-${severityColor}-900/30 dark:text-${severityColor}-300`}>
+                                {issue.severity || 'error'}
                                           </span>
                                         </div>
                                         
-                                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                                          {issue.message.replace(/^[🔤📝❗✨💡]\s*/, '')}
-                                        </p>
-                                        
-                                        {issue.suggestions.length > 0 && (
-                                          <div className="flex flex-wrap gap-2">
-                                            {issue.suggestions.slice(0, 3).map((suggestion, suggestionIndex) => (
-                                              <motion.button
-                                                key={suggestionIndex}
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                onClick={() => applySuggestion(issue, suggestion)}
-                                                className="px-3 py-1 text-sm bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900 dark:hover:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-lg transition-colors font-medium shadow-sm"
-                                              >
-                                                "{suggestion.text}"
-                                              </motion.button>
-                                            ))}
-                                          </div>
-                                        )}
-                                      </div>
-                                      
+                            <p className="text-sm text-gray-900 dark:text-white mb-2">
+                              {issue.message || issue.shortMessage || 'Grammar issue detected'}
+                            </p>
+                            
+                            {issue.suggestions && issue.suggestions.length > 0 && (
+                              <div className="space-y-1">
+                                {issue.suggestions.slice(0, 3).map((suggestion, idx) => (
                                       <button
-                                        onClick={() => dismissIssue(issue)}
-                                        className="ml-3 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 text-lg p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                                    key={idx}
+                                    onClick={() => applySuggestion(issue)}
+                                    className="block w-full text-left text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-3 py-2 rounded hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                                       >
-                                        ✕
+                                    "{suggestion}"
                                       </button>
-                                    </div>
-                                  </motion.div>
                                 ))}
+                              </div>
+                            )}
+                          </div>
                               </div>
                             </motion.div>
                           );
                         })}
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* Insights Tab */}
-                {activeTab === 'insights' && (
-                  <div className="p-4 space-y-4">
-                    {analysis ? (
-                      <>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Readability</h4>
-                            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                              {analysis.readabilityScore}/100
-                            </div>
-                          </div>
-                          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Vocabulary</h4>
-                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                              {analysis.vocabularyDiversity}%
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                          <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Text Statistics</h4>
-                          <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>Words: <span className="font-medium">{analysis.wordCount}</span></div>
-                            <div>Sentences: <span className="font-medium">{analysis.sentenceCount}</span></div>
-                            <div>Avg Length: <span className="font-medium">{Math.round(analysis.averageSentenceLength)}</span></div>
-                            <div>Complexity: <span className="font-medium">{analysis.complexityScore}%</span></div>
-                          </div>
-                        </div>
-
-                        {analysis.toneAnalysis && (
-                          <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                            <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Tone Analysis</h4>
-                            <div className="text-sm space-y-1">
-                              <div>Style: <span className="font-medium capitalize">{analysis.toneAnalysis.dominant}</span></div>
-                              <div>Formality: <span className="font-medium">{analysis.toneAnalysis.formalityScore}%</span></div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        Run grammar check to see insights
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Stats Tab */}
-                {activeTab === 'stats' && (
-                  <div className="p-4 space-y-4">
-                    <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">Session Statistics</h4>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Total Checks:</span>
-                          <span className="font-medium">{statistics.totalChecks}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Average Score:</span>
-                          <span className="font-medium">{statistics.averageScore}/100</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Issues Found:</span>
-                          <span className="font-medium">{totalIssues}</span>
-                        </div>
-                      </div>
+              {/* Statistics */}
+              {statistics.totalChecks > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">Session Stats</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{statistics.totalChecks}</div>
+                      <div className="text-xs text-gray-500">Checks</div>
                     </div>
-
-                    {Object.entries(issueStats).map(([category, count]) => {
-                      if (category === 'total') return null;
-                      const categoryData = GRAMMAR_CATEGORIES[category];
-                      return (
-                        <div key={category} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <span>{categoryData.icon}</span>
-                              <span className="font-medium capitalize">{category}</span>
-                            </div>
-                            <span className="font-bold text-lg">{count}</span>
-                          </div>
+                    <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">{statistics.averageScore}</div>
+                      <div className="text-xs text-gray-500">Avg Score</div>
                         </div>
-                      );
-                    })}
+                  </div>
                   </div>
                 )}
               </div>
             </motion.div>
-          </>
         )}
       </AnimatePresence>
     </>

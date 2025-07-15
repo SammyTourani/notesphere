@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real Mega-Engine Integration Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .test-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 15px;
+        }
+        
+        .test-button {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .results {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .issue {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 8px 0;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .issue.spelling { border-left-color: #ff6b6b; }
+        .issue.grammar { border-left-color: #4ecdc4; }
+        .issue.style { border-left-color: #45b7d1; }
+        .issue.clarity { border-left-color: #96ceb4; }
+        
+        .issue-header {
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 5px;
+        }
+        
+        .issue-message {
+            color: #ddd;
+            margin-bottom: 8px;
+        }
+        
+        .suggestions {
+            color: #4CAF50;
+            font-style: italic;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .stat-label {
+            color: #ddd;
+            margin-top: 5px;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #4CAF50;
+            font-style: italic;
+        }
+        
+        .error {
+            background: rgba(255, 0, 0, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ffcccb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: rgba(0, 255, 0, 0.2);
+            border: 1px solid #4CAF50;
+            color: #90EE90;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .engine-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .performance-metrics {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .metric {
+            text-align: center;
+            margin: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #bbb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 Real Mega-Engine Integration Test</h1>
+        
+        <div class="engine-info">
+            <h3>🚀 Testing Integration with Your Real WASM-Based Engines</h3>
+            <p>This test uses your actual nlprule WASM, Hunspell, SymSpell, write-good, and retext engines</p>
+            <p>No pattern-based rules - only real, dynamic grammar engines that work with any text!</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>📝 Test Your Real Grammar Engine</h3>
+            <textarea class="test-input" id="testText" placeholder="Enter text to check with the real mega-engine...">
+The cats is very hungry and they wants to eat there dinner. I definately think this are working good now. Between you and I, this sentence have many errors that could of been avoided.
+            </textarea>
+            <button class="test-button" onclick="testRealEngine()">🔍 Test Real Mega-Engine</button>
+            <button class="test-button" onclick="testPerformance()">⚡ Performance Test</button>
+            <button class="test-button" onclick="clearResults()">🗑️ Clear</button>
+            
+            <div id="results" class="results" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>📊 Engine Statistics</h3>
+            <div id="engineStats" class="stats"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let advancedGrammarService;
+        
+        // Initialize the grammar service
+        async function initializeService() {
+            try {
+                // Dynamic import to load the AdvancedGrammarService
+                const module = await import('./src/services/AdvancedGrammarService.js');
+                const AdvancedGrammarService = module.default;
+                advancedGrammarService = new AdvancedGrammarService();
+                
+                console.log('✅ Real Grammar Service initialized');
+                document.querySelector('.engine-info').innerHTML += '<div class="success">✅ Real Mega-Engine Service Loaded Successfully!</div>';
+                
+                // Test initialization
+                const initResult = await advancedGrammarService.initialize();
+                if (initResult) {
+                    document.querySelector('.engine-info').innerHTML += '<div class="success">🚀 Real WASM Engines Initialized!</div>';
+                } else {
+                    document.querySelector('.engine-info').innerHTML += '<div class="error">⚠️ Using fallback mode</div>';
+                }
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize Real Grammar Service:', error);
+                document.querySelector('.engine-info').innerHTML += `<div class="error">❌ Failed to load: ${error.message}</div>`;
+            }
+        }
+        
+        // Test the real engine
+        window.testRealEngine = async function() {
+            const text = document.getElementById('testText').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!text) {
+                alert('Please enter some text to test!');
+                return;
+            }
+            
+            if (!advancedGrammarService) {
+                alert('Grammar service not initialized!');
+                return;
+            }
+            
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div class="loading">🔍 Real Mega-Engine analyzing text...</div>';
+            
+            try {
+                const startTime = Date.now();
+                const result = await advancedGrammarService.checkText(text, {
+                    categories: ['grammar', 'spelling', 'style', 'clarity']
+                });
+                const endTime = Date.now();
+                
+                console.log('✅ Real Mega-Engine Results:', result);
+                
+                let resultsHTML = `
+                    <div class="success">
+                        <strong>🎯 Real Mega-Engine Analysis Complete!</strong><br>
+                        Engine: ${result.engine} | Processing Time: ${endTime - startTime}ms
+                    </div>
+                `;
+                
+                if (result.issues && result.issues.length > 0) {
+                    resultsHTML += `<h4>🔍 Issues Found (${result.issues.length}):</h4>`;
+                    
+                    result.issues.forEach((issue, index) => {
+                        const suggestions = issue.suggestions && issue.suggestions.length > 0 
+                            ? ` → Suggestions: ${issue.suggestions.slice(0, 3).join(', ')}` 
+                            : '';
+                        
+                        resultsHTML += `
+                            <div class="issue ${issue.type || 'grammar'}">
+                                <div class="issue-header">
+                                    ${index + 1}. ${issue.shortMessage || issue.type} 
+                                    <span style="font-weight: normal; color: #bbb;">
+                                        (${issue.source || 'unknown'})
+                                    </span>
+                                </div>
+                                <div class="issue-message">${issue.message}</div>
+                                <div style="color: #aaa; font-size: 0.9em;">
+                                    Text: "${issue.originalText || text.slice(issue.startIndex, issue.endIndex)}"
+                                </div>
+                                ${suggestions ? `<div class="suggestions">${suggestions}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                } else {
+                    resultsHTML += '<div class="success">✨ No issues found! Your text looks great!</div>';
+                }
+                
+                // Performance metrics
+                if (result.summary) {
+                    resultsHTML += `
+                        <div class="performance-metrics">
+                            <div class="metric">
+                                <div class="metric-value">${result.summary.totalIssues}</div>
+                                <div class="metric-label">Issues Found</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${result.summary.processingTime}ms</div>
+                                <div class="metric-label">Processing Time</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-value">${result.summary.qualityScore}/100</div>
+                                <div class="metric-label">Quality Score</div>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                resultsDiv.innerHTML = resultsHTML;
+                
+                // Update engine stats
+                updateEngineStats(result);
+                
+            } catch (error) {
+                console.error('❌ Real Engine test failed:', error);
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Real Mega-Engine Test Failed</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        };
+        
+        // Performance test
+        window.testPerformance = async function() {
+            const testTexts = [
+                "The cats is hungry.",
+                "I have went to the store yesterday and buyed some food for dinner.",
+                "Between you and I, this sentence have several grammar errors that could of been avoided.",
+                "The quick brown fox jumps over the lazy dog. This are a test sentence with intentional errors.",
+                "Definitly, seperate issues occured when I was writting this sentance. Their going to be caught by the real engines."
+            ];
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div class="loading">⚡ Running performance test with real engines...</div>';
+            
+            try {
+                const performanceResults = [];
+                
+                for (let i = 0; i < testTexts.length; i++) {
+                    const startTime = Date.now();
+                    const result = await advancedGrammarService.checkText(testTexts[i]);
+                    const endTime = Date.now();
+                    
+                    performanceResults.push({
+                        text: testTexts[i],
+                        processingTime: endTime - startTime,
+                        issuesFound: result.issues.length,
+                        engine: result.engine
+                    });
+                }
+                
+                const avgTime = performanceResults.reduce((sum, r) => sum + r.processingTime, 0) / performanceResults.length;
+                const totalIssues = performanceResults.reduce((sum, r) => sum + r.issuesFound, 0);
+                
+                let performanceHTML = `
+                    <div class="success">
+                        <strong>⚡ Real Mega-Engine Performance Test Complete!</strong><br>
+                        Average Processing Time: ${avgTime.toFixed(1)}ms | Total Issues Found: ${totalIssues}
+                    </div>
+                    <h4>📊 Performance Results:</h4>
+                `;
+                
+                performanceResults.forEach((result, index) => {
+                    performanceHTML += `
+                        <div class="issue">
+                            <div class="issue-header">Test ${index + 1} - ${result.processingTime}ms</div>
+                            <div class="issue-message">Text: "${result.text.substring(0, 50)}..."</div>
+                            <div style="color: #4CAF50;">Issues Found: ${result.issuesFound} | Engine: ${result.engine}</div>
+                        </div>
+                    `;
+                });
+                
+                resultsDiv.innerHTML = performanceHTML;
+                
+            } catch (error) {
+                console.error('❌ Performance test failed:', error);
+                resultsDiv.innerHTML = `<div class="error">❌ Performance test failed: ${error.message}</div>`;
+            }
+        };
+        
+        // Update engine statistics
+        function updateEngineStats(result) {
+            const statsDiv = document.getElementById('engineStats');
+            const stats = advancedGrammarService.getStatistics();
+            
+            statsDiv.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.totalChecks}</div>
+                    <div class="stat-label">Total Checks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.averageProcessingTime.toFixed(1)}ms</div>
+                    <div class="stat-label">Avg Processing Time</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.issuesFound}</div>
+                    <div class="stat-label">Issues Found</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.cacheHits}</div>
+                    <div class="stat-label">Cache Hits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.averageQualityScore.toFixed(1)}/100</div>
+                    <div class="stat-label">Avg Quality Score</div>
+                </div>
+            `;
+        }
+        
+        // Clear results
+        window.clearResults = function() {
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('engineStats').innerHTML = '';
+        };
+        
+        // Initialize on page load
+        initializeService();
+    </script>
+</body>
+</html> 

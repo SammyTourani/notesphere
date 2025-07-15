@@ -1,7 +1,12 @@
 /**
- * 🎯 PRECISE GRAMMAR EXTENSION 🎯
- * Fixed for accurate character position mapping and underline-only highlighting
- * With click-to-open Grammar Assistant functionality
+ * 🎯 UNIFIED GRAMMAR EXTENSION - DECORATION ONLY 🎯
+ * 
+ * This extension ONLY handles:
+ * 1. Rendering grammar decorations/underlines
+ * 2. Handling clicks on decorations
+ * 3. Managing decoration state
+ * 
+ * Grammar detection is handled by external services via UnifiedGrammarController
  */
 
 import { Extension } from '@tiptap/core';
@@ -166,169 +171,42 @@ export const navigateToGrammarIssue = (issue) => {
   }, 150);
 };
 
-// Enhanced grammar rules with precise pattern matching
-const getGrammarRules = () => [
-  // Spelling errors
-  { pattern: /\bteh\b/gi, suggestion: 'the', message: 'Spelling error: "teh" should be "the"', category: 'spelling' },
-  { pattern: /\brecieve\b/gi, suggestion: 'receive', message: 'Spelling error: "i before e except after c"', category: 'spelling' },
-  { pattern: /\bseperate\b/gi, suggestion: 'separate', message: 'Spelling error: "seperate" should be "separate"', category: 'spelling' },
-  { pattern: /\boccured\b/gi, suggestion: 'occurred', message: 'Spelling error: missing double "r"', category: 'spelling' },
-  { pattern: /\btommorow\b/gi, suggestion: 'tomorrow', message: 'Spelling error: only one "m" in tomorrow', category: 'spelling' },
-  { pattern: /\bdont\b/gi, suggestion: "don't", message: 'Missing apostrophe in contraction', category: 'spelling' },
-  { pattern: /\bcant\b/gi, suggestion: "can't", message: 'Missing apostrophe in contraction', category: 'spelling' },
-  { pattern: /\bwont\b/gi, suggestion: "won't", message: 'Missing apostrophe in contraction', category: 'spelling' },
-  
-  // Grammar errors
-  { pattern: /\bthis are\b/gi, suggestion: 'these are', message: 'Subject-verb disagreement: "this are" should be "these are"', category: 'grammar' },
-  { pattern: /\ba example\b/gi, suggestion: 'an example', message: 'Use "an" before vowel sounds', category: 'grammar' },
-  { pattern: /\bthat have\b/gi, suggestion: 'that has', message: 'Subject-verb disagreement with singular "that"', category: 'grammar' },
-  { pattern: /\boff a\b/gi, suggestion: 'of a', message: 'Preposition error: "off" should be "of"', category: 'grammar' },
-  { pattern: /\bit jump\b/gi, suggestion: 'it jumps', message: 'Subject-verb disagreement: "it jump" should be "it jumps"', category: 'grammar' },
-  { pattern: /\btheir was\b/gi, suggestion: 'there was', message: 'Wrong word: "their" should be "there"', category: 'grammar' },
-  { pattern: /\bits raining\b/gi, suggestion: "it's raining", message: 'Missing apostrophe: "its" should be "it\'s" (it is)', category: 'grammar' },
-  
-  // Word choice errors
-  { pattern: /\bno why\b/gi, suggestion: 'know why', message: 'Wrong word: "no" should be "know"', category: 'word_choice' },
-  { pattern: /\bwrite very\b/gi, suggestion: 'written very', message: 'Wrong verb form: "write" should be "written"', category: 'word_choice' },
-  
-  // Style errors
-  { pattern: /\bvery good\b/gi, suggestion: 'excellent', message: 'Use stronger adjectives instead of "very good"', category: 'style' },
-  
-  // Punctuation errors - handle lowercase "i" but NOT at start of sentences
-  { pattern: /(?<![.!?]\s*)\bi\b(?!\s*[.!?])/g, suggestion: 'I', message: 'Capitalize personal pronoun "I"', category: 'punctuation' }
-];
-
-// Simplified but reliable position mapping
-const findTextPositionsInDoc = (doc, text) => {
-  const docText = doc.textContent;
-  const positions = [];
-  
-  // For each match in the text, find the corresponding position in the document
-  const searchTexts = getGrammarRules().map(rule => ({
-    pattern: rule.pattern,
-    rule: rule
-  }));
-  
-  searchTexts.forEach(({ pattern, rule }) => {
-    const regex = new RegExp(pattern.source, pattern.flags);
-    let match;
+// Helper function to convert issue positions to TipTap format
+const convertPositionsToTipTap = (issues, doc) => {
+  return issues.map(issue => {
+    let from, to;
     
-    while ((match = regex.exec(docText)) !== null) {
-      const textStart = match.index;
-      const textEnd = match.index + match[0].length;
-      
-      // Convert to document positions (add 1 for TipTap's 1-based indexing)
-      const docStart = textStart + 1;
-      const docEnd = textEnd + 1;
-      
-      // Validate positions
-      if (docStart >= 1 && docEnd > docStart && docEnd <= doc.content.size + 1) {
-        positions.push({
-          from: docStart,
-          to: docEnd,
-          text: match[0],
-          rule: rule,
-          textStart: textStart,
-          textEnd: textEnd
-        });
-      }
+    // Handle different position formats from grammar services
+    if (issue.from !== undefined && issue.to !== undefined) {
+      // Already in TipTap format
+      from = issue.from;
+      to = issue.to;
+    } else if (issue.offset !== undefined && issue.length !== undefined) {
+      // Convert from offset/length format (0-based) to TipTap positions (1-based)
+      from = issue.offset + 1;
+      to = issue.offset + issue.length + 1;
+    } else if (issue.position && issue.position.from !== undefined && issue.position.to !== undefined) {
+      from = issue.position.from;
+      to = issue.position.to;
+    } else {
+      console.warn('Issue has no valid position data:', issue);
+      return null;
     }
-  });
-  
-  return positions;
-};
-
-// Helper function to check grammar with simplified position mapping
-const checkGrammarText = (doc, options, storage, editor) => {
-  const text = doc.textContent;
-  console.log('🔍 SIMPLIFIED Grammar checking text:', JSON.stringify(text.substring(0, 100)) + (text.length > 100 ? '...' : ''));
-  
-  if (!text || text.trim().length < 10) {
-    console.log('📝 Text too short, clearing decorations');
-    const tr = editor.state.tr.setMeta(grammarPluginKey, DecorationSet.empty);
-    editor.view.dispatch(tr);
-    return;
-  }
-  
-  // Find positions using simplified method
-  const positions = findTextPositionsInDoc(doc, text);
-  console.log(`🎯 Found ${positions.length} potential issues`);
-  
-  if (positions.length === 0) {
-    console.log('📝 No grammar issues found - clearing decorations');
-    const tr = editor.state.tr.setMeta(grammarPluginKey, DecorationSet.empty);
-    editor.view.dispatch(tr);
-    return;
-  }
-  
-  // Create issues with proper data structure
-  const issues = positions.map((pos, index) => ({
-    id: `issue-${pos.textStart}-${Date.now()}-${index}`,
-    from: pos.from,
-    to: pos.to,
-    text: pos.text,
-    message: pos.rule.message,
-    suggestion: pos.rule.suggestion,
-    category: pos.rule.category || 'default',
-    originalText: pos.text,
-    textOffset: pos.textStart,
-    length: pos.text.length,
-    position: { from: pos.from, to: pos.to },
-        context: {
-      text: text.substring(Math.max(0, pos.textStart - 20), Math.min(text.length, pos.textEnd + 20)),
-      offset: Math.max(0, pos.textStart - 20)
-        },
-        rule: {
-      id: `rule-${index}`,
-      pattern: pos.rule.pattern.source,
-      category: pos.rule.category
+    
+    // Validate positions against document
+    const maxPos = doc.content.size + 1;
+    if (from < 1 || to > maxPos || from >= to) {
+      console.warn('Invalid position for issue:', { from, to, maxPos, issue });
+      return null;
     }
-  }));
-  
-  console.log(`🎨 Creating decorations for ${issues.length} issues`);
-  
-  // Create decorations
-  const decorations = issues.map(issue => {
-    console.log(`🎨 Creating decoration: "${issue.text}" (${issue.category}) at ${issue.from}-${issue.to}`);
     
-    const decoration = Decoration.inline(issue.from, issue.to, {
-      class: `grammar-error-${issue.category}`,
-      title: `${issue.message}: ${issue.suggestion}`,
-      'data-issue-id': issue.id,
-      'data-original-text': issue.originalText,
-      'data-suggestion': issue.suggestion,
-      'data-category': issue.category
-    });
-    
-    // Attach issue data to decoration for tracking
-    decoration.spec.issueData = issue;
-    
-    return decoration;
-  });
-  
-  console.log(`✅ Created ${decorations.length} decorations, applying to editor`);
-  
-  // Update decorations in the editor
-  const decorationSet = DecorationSet.create(doc, decorations);
-  const tr = editor.state.tr.setMeta(grammarPluginKey, decorationSet);
-  editor.view.dispatch(tr);
-  
-  console.log('✅ Decorations applied to editor');
-  
-  // Update storage
-  storage.issues = issues;
-  
-  // Call callbacks
-  if (options.onIssuesFound) {
-    console.log('📞 Calling onIssuesFound callback');
-    options.onIssuesFound(issues);
-  }
-  if (options.onIssuesUpdated) {
-    console.log('📞 Calling onIssuesUpdated callback');
-    options.onIssuesUpdated(issues);
-  }
-  
-  console.log(`🎯 Grammar check completed: ${issues.length} issues found and precisely underlined`);
+    return {
+      ...issue,
+      from,
+      to,
+      position: { from, to }
+    };
+  }).filter(issue => issue !== null);
 };
 
 export const GrammarExtension = Extension.create({
@@ -336,79 +214,102 @@ export const GrammarExtension = Extension.create({
 
   addOptions() {
     return {
-      enableRealTimeChecking: true,
-      debounceTime: 300, // Faster for testing
-      onIssuesFound: null,
-      onIssuesUpdated: null,
       onIssueClicked: null,
     };
   },
 
   addStorage() {
     return {
-      isEnabled: true,
       issues: [],
-      checkTimeout: null,
-      lastIssueCount: 0,
+      isEnabled: true,
     };
   },
 
   addCommands() {
     return {
-      toggleGrammar:
-        () =>
-        ({ commands }) => {
-          this.storage.isEnabled = !this.storage.isEnabled;
-          console.log('🎯 Grammar toggled:', this.storage.isEnabled ? 'ENABLED' : 'DISABLED');
-          return commands.focus();
+      // Command to update grammar decorations from external controller
+      updateGrammarDecorations:
+        (issues = []) =>
+        ({ tr, dispatch, state }) => {
+          if (!this.storage.isEnabled) {
+            return false;
+          }
+          
+          console.log('🎨 Updating grammar decorations with', issues.length, 'issues');
+          
+          if (issues.length === 0) {
+            // Clear all decorations
+            const newTr = tr.setMeta(grammarPluginKey, DecorationSet.empty);
+            if (dispatch) dispatch(newTr);
+            this.storage.issues = [];
+            return true;
+          }
+          
+          // Convert issue positions to TipTap format
+          const convertedIssues = convertPositionsToTipTap(issues, state.doc);
+          
+          // Create decorations
+          const decorations = convertedIssues.map(issue => {
+            const decoration = Decoration.inline(issue.from, issue.to, {
+              class: `grammar-error-${issue.category || 'grammar'}`,
+              title: `${issue.message}${issue.suggestions?.[0] ? ': ' + issue.suggestions[0] : ''}`,
+              'data-issue-id': issue.id,
+              'data-original-text': issue.originalText || issue.text,
+              'data-suggestion': issue.suggestions?.[0] || '',
+              'data-category': issue.category || 'grammar'
+            });
+            
+            // Attach issue data to decoration for click handling
+            decoration.spec.issueData = issue;
+            
+            return decoration;
+          });
+          
+          const decorationSet = DecorationSet.create(state.doc, decorations);
+          const newTr = tr.setMeta(grammarPluginKey, decorationSet);
+          
+          if (dispatch) dispatch(newTr);
+          
+          // Store issues for reference
+          this.storage.issues = convertedIssues;
+          
+          console.log('✅ Applied', decorations.length, 'grammar decorations');
+          return true;
         },
       
+      // Command to get current grammar issues
       getGrammarIssues:
         () =>
         ({ state }) => {
-          const decorations = grammarPluginKey.getState(state);
-          if (!decorations) return [];
-          
-          const issues = [];
-          decorations.find().forEach(decoration => {
-            if (decoration.spec.issueData) {
-              const updatedIssue = {
-                ...decoration.spec.issueData,
-                from: decoration.from,
-                to: decoration.to,
-                position: { from: decoration.from, to: decoration.to }
-              };
-              issues.push(updatedIssue);
-            }
-          });
-          
-          return issues;
+          return this.storage.issues || [];
         },
         
+      // Command to apply a suggestion
       applySuggestion:
-        (issueId) =>
+        (issueId, suggestion) =>
         ({ state, dispatch }) => {
-          const decorations = grammarPluginKey.getState(state);
-          if (!decorations) return false;
+          const issue = this.storage.issues.find(i => i.id === issueId);
+          if (!issue || !suggestion) return false;
           
-          let targetDecoration = null;
-          decorations.find().forEach(decoration => {
-            if (decoration.spec.issueData && decoration.spec.issueData.id === issueId) {
-              targetDecoration = decoration;
-            }
-          });
-          
-          if (!targetDecoration) return false;
-          
-          const { issueData } = targetDecoration.spec;
           const tr = state.tr.replaceWith(
-            targetDecoration.from,
-            targetDecoration.to,
-            state.schema.text(issueData.suggestion)
+            issue.from,
+            issue.to,
+            state.schema.text(suggestion)
           );
-                
+          
           if (dispatch) dispatch(tr);
-              return true;
+          return true;
+        },
+        
+      // Command to enable/disable grammar checking
+      setGrammarEnabled:
+        (enabled) =>
+        ({ commands }) => {
+          this.storage.isEnabled = enabled;
+          if (!enabled) {
+            commands.updateGrammarDecorations([]);
+          }
+          return true;
         },
     };
   },
@@ -425,7 +326,7 @@ export const GrammarExtension = Extension.create({
             const meta = tr.getMeta(grammarPluginKey);
             if (meta) {
               return meta;
-              }
+            }
             return decorationSet.map(tr.mapping, tr.doc);
           },
         },
@@ -459,34 +360,28 @@ export const GrammarExtension = Extension.create({
               if (grammarClasses.length > 0 && targetElement) {
                 console.log('🖱️ Clicked on grammar error element');
                 
-                // Try multiple methods to find the position
+                // Try to find the position
                 let pos;
                 try {
-                  // Method 1: Standard position detection
                   pos = view.posAtDOM(targetElement, 0);
                   console.log('📍 Position from posAtDOM:', pos);
                 } catch (error) {
                   console.warn('❌ posAtDOM failed:', error);
-                  // Method 2: Fallback - try getting position from data attributes
-                  const issueId = targetElement.getAttribute('data-issue-id');
-                  if (issueId) {
-                    console.log('🔍 Trying to find issue by ID:', issueId);
-                  }
                   return false;
                 }
                 
-              const decorations = grammarPluginKey.getState(view.state);
+                const decorations = grammarPluginKey.getState(view.state);
                 console.log('📋 Available decorations:', decorations ? 'Found' : 'None');
                 
                 if (decorations && pos !== undefined) {
                   // Search a range around the position
                   const searchRange = 5;
                   decorations.find(Math.max(0, pos - searchRange), pos + searchRange).forEach(decoration => {
-                  if (decoration.spec.issueData) {
+                    if (decoration.spec.issueData) {
                       const issue = decoration.spec.issueData;
                       console.log('🎯 Found issue for click:', issue);
                       
-                      // Enhanced navigation to Grammar Assistant
+                      // Navigate to Grammar Assistant
                       console.log('🎯 Navigating to issue:', issue.id, issue.text);
                       
                       // First, open Grammar Assistant if not already open
@@ -504,7 +399,6 @@ export const GrammarExtension = Extension.create({
                           console.log('🎯 Focusing on specific issue:', issue.id);
                           grammarAssistantCallbacks.focusOnIssue({
                             ...issue,
-                            // Ensure we have all the necessary data
                             position: { from: issue.from, to: issue.to },
                             highlighted: true,
                             clickSource: 'editor-underline'
@@ -517,7 +411,7 @@ export const GrammarExtension = Extension.create({
                         if (this.options.onIssueClicked) {
                           console.log('📞 Calling onIssueClicked callback');
                           this.options.onIssueClicked(issue);
-              }
+                        }
                       }, 150);
                       
                       event.preventDefault();
@@ -527,10 +421,10 @@ export const GrammarExtension = Extension.create({
                   });
                 } else {
                   console.warn('❌ No decorations found or invalid position');
+                }
               }
-            }
               return false;
-        }
+            }
           }
         },
       }),
@@ -540,69 +434,20 @@ export const GrammarExtension = Extension.create({
   onCreate() {
     // Inject CSS styles
     injectGrammarStyles();
-    console.log('🎨 SIMPLIFIED Grammar Extension created and styles injected');
+    console.log('🎨 UNIFIED Grammar Extension created (decoration-only mode)');
   },
 
-  onUpdate() {
-    if (!this.storage.isEnabled) {
-      console.log('🔍 Grammar checking disabled, skipping update');
-      return;
-    }
-    
-    console.log('🔍 Grammar extension onUpdate triggered');
-    
-    // Clear existing timeout
-    if (this.storage.checkTimeout) {
-      clearTimeout(this.storage.checkTimeout);
-    }
-    
-    // Set new timeout for debounced checking
-    this.storage.checkTimeout = setTimeout(() => {
-      console.log('🔍 Running debounced grammar check');
-      checkGrammarText(this.editor.state.doc, this.options, this.storage, this.editor);
-    }, this.options.debounceTime);
-  },
-
-  onSelectionUpdate() {
-    // Trigger initial check when selection updates (covers first load)
-    if (!this.storage.checkTimeout && this.storage.isEnabled) {
-      console.log('🔍 Triggering initial grammar check on selection update');
-      this.storage.checkTimeout = setTimeout(() => {
-        checkGrammarText(this.editor.state.doc, this.options, this.storage, this.editor);
-      }, 100);
-    }
-  }
+  // NOTE: Removed onUpdate and onSelectionUpdate - no more automatic grammar checking
+  // Grammar checking is now handled by external UnifiedGrammarController
 });
 
-// Export the enhanced check function for external use
+// Export utility function to update decorations from external controller
 export const updateGrammarDecorations = (editor, issues = []) => {
-  if (!editor || !editor.view) return;
-  
-  console.log('🔄 Externally updating grammar decorations with', issues.length, 'issues');
-  
-  if (issues.length === 0) {
-    const tr = editor.state.tr.setMeta(grammarPluginKey, DecorationSet.empty);
-    editor.view.dispatch(tr);
+  if (!editor || !editor.commands) {
+    console.warn('❌ Editor not available for decoration update');
     return;
   }
   
-  const decorations = issues.map(issue => {
-    const decoration = Decoration.inline(issue.from || issue.position?.from || 0, issue.to || issue.position?.to || 0, {
-      class: `grammar-error-${issue.category || 'default'}`,
-      title: `${issue.message}: ${issue.suggestion || ''}`,
-      'data-issue-id': issue.id,
-      'data-original-text': issue.originalText || issue.text,
-      'data-suggestion': issue.suggestion,
-      'data-category': issue.category
-    });
-    
-    decoration.spec.issueData = issue;
-    return decoration;
-  });
-  
-  const decorationSet = DecorationSet.create(editor.state.doc, decorations);
-  const tr = editor.state.tr.setMeta(grammarPluginKey, decorationSet);
-  editor.view.dispatch(tr);
-  
-  console.log('✅ External decorations applied to editor');
+  console.log('🔄 Externally updating grammar decorations with', issues.length, 'issues');
+  return editor.commands.updateGrammarDecorations(issues);
 };

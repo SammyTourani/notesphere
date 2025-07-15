@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 World-Class Multi-Engine Grammar System Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: #f8fafc;
+        }
+        .test-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .success { 
+            background: #f0fff4; 
+            border: 2px solid #68d391; 
+            color: #22543d;
+        }
+        .error { 
+            background: #fed7d7; 
+            border: 2px solid #fc8181; 
+            color: #742a2a;
+        }
+        .warning { 
+            background: #fefcbf; 
+            border: 2px solid #f6e05e; 
+            color: #744210;
+        }
+        .info {
+            background: #ebf8ff;
+            border: 2px solid #63b3ed;
+            color: #2a4365;
+        }
+        textarea {
+            width: 100%;
+            height: 120px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-size: 16px;
+            resize: vertical;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .issue-item {
+            background: white;
+            margin: 8px 0;
+            padding: 12px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .issue-header {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        .issue-details {
+            font-size: 12px;
+            color: #718096;
+        }
+        .engine-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            margin-left: 8px;
+        }
+        .performance-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .fast { background: #c6f6d5; color: #22543d; }
+        .medium { background: #fefcbf; color: #744210; }
+        .slow { background: #fed7d7; color: #742a2a; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌍 World-Class Multi-Engine Grammar System</h1>
+        <p style="text-align: center; color: #718096; font-size: 18px; margin-bottom: 40px;">
+            Professional-grade grammar checking with 10+ engines running in parallel
+        </p>
+
+        <!-- Engine Status Test -->
+        <div class="test-section">
+            <h2>🚀 Engine Status & Initialization</h2>
+            <p>Test if all grammar engines are properly initialized and ready</p>
+            <button onclick="testEngineStatus()">Check Engine Status</button>
+            <div id="engineStatus" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Quick Performance Test -->
+        <div class="test-section">
+            <h2>⚡ Performance Test</h2>
+            <p>Test processing speed with complex text (Target: &lt;800ms)</p>
+            <button onclick="testPerformance()">Run Performance Test</button>
+            <div id="performanceResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Comprehensive Analysis Test -->
+        <div class="test-section">
+            <h2>🎯 Comprehensive Error Detection</h2>
+            <p>Test error detection across all categories (Target: 15-25 errors)</p>
+            <button onclick="testComprehensiveAnalysis()">Analyze Complex Text</button>
+            <div id="comprehensiveResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Custom Text Analysis -->
+        <div class="test-section">
+            <h2>✍️ Custom Text Analysis</h2>
+            <p>Test your own text with the multi-engine system</p>
+            <textarea id="customText" placeholder="Type or paste your text here to analyze with all engines...">Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others.</textarea>
+            <button onclick="testCustomText()">Analyze Custom Text</button>
+            <div id="customResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Deduplication Test -->
+        <div class="test-section">
+            <h2>🔍 Smart Deduplication Test</h2>
+            <p>Test how well the system removes duplicate errors from multiple engines</p>
+            <button onclick="testDeduplication()">Test Deduplication</button>
+            <div id="deduplicationResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- System Statistics -->
+        <div class="test-section">
+            <h2>📊 System Statistics</h2>
+            <p>View comprehensive statistics from all engines</p>
+            <button onclick="viewStatistics()">View Statistics</button>
+            <div id="statisticsResults" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let multiEngineService = null;
+
+        // Initialize the Multi-Engine Grammar Service
+        async function initializeService() {
+            try {
+                console.log('🌍 Initializing World-Class Multi-Engine Grammar Service...');
+                const { default: MultiEngineGrammarService } = await import('./src/services/MultiEngineGrammarService.js');
+                multiEngineService = new MultiEngineGrammarService();
+                
+                // Wait a moment for initialization
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                console.log('✅ Multi-Engine Grammar Service initialized');
+                return true;
+            } catch (error) {
+                console.error('❌ Failed to initialize Multi-Engine Grammar Service:', error);
+                return false;
+            }
+        }
+
+        // Test engine status and initialization
+        window.testEngineStatus = async function() {
+            const container = document.getElementById('engineStatus');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔄 Checking engine status...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize service');
+                    }
+                }
+                
+                const stats = multiEngineService.getStatistics();
+                const engines = Object.entries(stats.engines);
+                
+                let statusHTML = '<div class="success">✅ Multi-Engine Grammar Service Status</div>\n\n';
+                statusHTML += `<div class="stats-grid">`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.totalEngines}</div>
+                    <div class="stat-label">Total Engines</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.totalChecks}</div>
+                    <div class="stat-label">Total Checks</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.averageProcessingTime)}ms</div>
+                    <div class="stat-label">Avg Processing Time</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.averageErrorsDetected)}</div>
+                    <div class="stat-label">Avg Errors Detected</div>
+                </div>`;
+                
+                statusHTML += `</div>\n\n`;
+                statusHTML += '<strong>🔧 Engine Details:</strong>\n';
+                
+                for (const [engineName, engineStats] of engines) {
+                    const metadata = engineStats.metadata || {};
+                    const isEnabled = metadata.isEnabled ? '✅' : '❌';
+                    const performance = engineStats.averageProcessingTime < 100 ? 'fast' : 
+                                       engineStats.averageProcessingTime < 300 ? 'medium' : 'slow';
+                    
+                    statusHTML += `\n${isEnabled} <strong>${engineName}</strong> (Priority: ${metadata.priority || 0})`;
+                    statusHTML += `<span class="performance-indicator ${performance}">${Math.round(engineStats.averageProcessingTime)}ms</span>`;
+                    statusHTML += `\n   └─ Checks: ${engineStats.checksPerformed}, Errors: ${engineStats.errorsFound}`;
+                    statusHTML += `\n   └─ Types: ${(metadata.errorTypes || []).join(', ')}`;
+                }
+                
+                container.innerHTML = statusHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Engine status check failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test performance with complex text
+        window.testPerformance = async function() {
+            const container = document.getElementById('performanceResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>⚡ Running performance test...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    await initializeService();
+                }
+                
+                const complexText = `Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others. In order to achieve better results, we need to accomodate there needs more effectively. This is a neccessary step that will definitly help improve the situation. The occassion calls for immediate action, and we should not embarass ourselves by failing to act. It's wierd how such a simple freind can make such a difference in our lives.`;
+                
+                const startTime = Date.now();
+                const result = await multiEngineService.checkText(complexText);
+                const totalTime = Date.now() - startTime;
+                
+                const performanceRating = totalTime < 400 ? 'Excellent ⚡' : 
+                                        totalTime < 800 ? 'Good 👍' : 
+                                        'Needs Optimization ⚠️';
+                
+                const performanceClass = totalTime < 400 ? 'success' : 
+                                       totalTime < 800 ? 'warning' : 'error';
+                
+                let resultHTML = `<strong>⚡ Performance Test Results</strong>\n\n`;
+                resultHTML += `<div class="stats-grid">`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${totalTime}ms</div>
+                    <div class="stat-label">Total Processing Time</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.issues.length}</div>
+                    <div class="stat-label">Errors Detected</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.enginesUsed}</div>
+                    <div class="stat-label">Engines Used</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${performanceRating}</div>
+                    <div class="stat-label">Performance Rating</div>
+                </div>`;
+                resultHTML += `</div>\n\n`;
+                
+                resultHTML += `📊 <strong>Engine Performance:</strong>\n`;
+                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                    resultHTML += `   • ${engine}: ${issues} issues\n`;
+                }
+                
+                if (result.statistics.deduplicationEfficiency !== undefined) {
+                    resultHTML += `\n🔍 <strong>Deduplication:</strong> ${result.statistics.deduplicationEfficiency}% efficiency`;
+                    resultHTML += `\n   Raw issues: ${result.statistics.rawIssuesFound} → Final: ${result.issues.length}`;
+                }
+                
+                resultHTML += `\n\n🎯 <strong>Target:</strong> <800ms (Current: ${totalTime}ms)`;
+                resultHTML += `\n✅ <strong>Status:</strong> ${performanceRating}`;
+                
+                container.innerHTML = resultHTML;
+                container.className = `result ${performanceClass}`;
+                
+            } catch (error) {
+                container.innerHTML = `❌ Performance test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test comprehensive error detection
+        window.testComprehensiveAnalysis = async function() {
+            const container = document.getElementById('comprehensiveResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🎯 Running comprehensive analysis...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    await initializeService();
+                }
+                
+                const challengingText = `Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others. In order to achieve better results, we need to accomodate there needs more effectively. This is a neccessary step that will definitly help improve the situation. The occassion calls for immediate action, and we should not embarass ourselves by failing to act. It's wierd how such a simple freind can make such a difference in our lives. Your going to need to loose some weight if you want to be more healthy. Its important to recieve feedback from others who care about you.`;
+                
+                const result = await multiEngineService.checkText(challengingText);
+                
+                const qualityRating = result.issues.length >= 20 ? 'Professional Grade 🏆' :
+                                    result.issues.length >= 15 ? 'Advanced 🎯' :
+                                    result.issues.length >= 10 ? 'Good 👍' :
+                                    'Basic ⚠️';
+                
+                const qualityClass = result.issues.length >= 15 ? 'success' : 
+                                   result.issues.length >= 10 ? 'warning' : 'error';
+                
+                let resultHTML = `<strong>🎯 Comprehensive Analysis Results</strong>\n\n`;
+                resultHTML += `<div class="stats-grid">`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.issues.length}</div>
+                    <div class="stat-label">Total Errors Found</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.qualityScore || 'N/A'}</div>
+                    <div class="stat-label">Quality Score</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.processingTime}ms</div>
+                    <div class="stat-label">Processing Time</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${qualityRating}</div>
+                    <div class="stat-label">Detection Level</div>
+                </div>`;
+                resultHTML += `</div>\n\n`;
+                
+                // Error breakdown by category
+                if (result.statistics.breakdown) {
+                    resultHTML += `📊 <strong>Error Breakdown:</strong>\n`;
+                    for (const [category, count] of Object.entries(result.statistics.breakdown)) {
+                        resultHTML += `   • ${category}: ${count} errors\n`;
+                    }
+                    resultHTML += `\n`;
+                }
+                
+                // Engine contributions
+                resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
+                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                    resultHTML += `   • ${engine}: ${issues} issues\n`;
+                }
+                
+                // Sample issues
+                resultHTML += `\n🔍 <strong>Sample Issues Found:</strong>\n`;
+                result.issues.slice(0, 5).forEach((issue, index) => {
+                    resultHTML += `\n${index + 1}. <strong>${issue.message}</strong>`;
+                    resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
+                    resultHTML += `\n   Category: ${issue.category} | Confidence: ${Math.round((issue.confidence || 0) * 100)}%`;
+                    if (issue.suggestions && issue.suggestions.length > 0) {
+                        resultHTML += `\n   Suggestions: ${issue.suggestions.slice(0, 2).join(', ')}`;
+                    }
+                    resultHTML += `\n`;
+                });
+                
+                if (result.issues.length > 5) {
+                    resultHTML += `\n... and ${result.issues.length - 5} more issues`;
+                }
+                
+                resultHTML += `\n\n🎯 <strong>Target:</strong> 15-25 errors (Current: ${result.issues.length})`;
+                resultHTML += `\n✅ <strong>Status:</strong> ${qualityRating}`;
+                
+                container.innerHTML = resultHTML;
+                container.className = `result ${qualityClass}`;
+                
+            } catch (error) {
+                container.innerHTML = `❌ Comprehensive analysis failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test custom text
+        window.testCustomText = async function() {
+            const container = document.getElementById('customResults');
+            const textArea = document.getElementById('customText');
+            
+            container.style.display = 'block';
+            container.innerHTML = '<div>✍️ Analyzing custom text...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    await initializeService();
+                }
+                
+                const text = textArea.value;
+                if (!text.trim()) {
+                    throw new Error('Please enter some text to analyze');
+                }
+                
+                const result = await multiEngineService.checkText(text);
+                
+                let resultHTML = `<strong>✍️ Custom Text Analysis</strong>\n\n`;
+                resultHTML += `<div class="stats-grid">`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${text.length}</div>
+                    <div class="stat-label">Characters</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.wordCount || text.split(/\s+/).length}</div>
+                    <div class="stat-label">Words</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.issues.length}</div>
+                    <div class="stat-label">Issues Found</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.processingTime}ms</div>
+                    <div class="stat-label">Processing Time</div>
+                </div>`;
+                resultHTML += `</div>\n\n`;
+                
+                if (result.issues.length > 0) {
+                    resultHTML += `🔍 <strong>Issues Found:</strong>\n`;
+                    result.issues.forEach((issue, index) => {
+                        resultHTML += `\n${index + 1}. <strong>${issue.message}</strong>`;
+                        resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
+                        resultHTML += `\n   Category: ${issue.category} | Severity: ${issue.severity}`;
+                        if (issue.suggestions && issue.suggestions.length > 0) {
+                            resultHTML += `\n   Suggestions: ${issue.suggestions.join(', ')}`;
+                        }
+                        resultHTML += `\n`;
+                    });
+                } else {
+                    resultHTML += `✅ <strong>No issues found!</strong> The text appears to be well-written.`;
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = result.issues.length > 0 ? 'result info' : 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Custom text analysis failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test deduplication
+        window.testDeduplication = async function() {
+            const container = document.getElementById('deduplicationResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔍 Testing deduplication...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    await initializeService();
+                }
+                
+                // Text with errors that multiple engines should detect
+                const duplicateText = "Between you and I, this are a test of the deduplication system. I could of written this better, but there going to be overlapping errors from multiple engines.";
+                
+                const result = await multiEngineService.checkText(duplicateText);
+                
+                let resultHTML = `<strong>🔍 Deduplication Test Results</strong>\n\n`;
+                
+                if (result.statistics.rawIssuesFound && result.statistics.deduplicationEfficiency !== undefined) {
+                    resultHTML += `<div class="stats-grid">`;
+                    resultHTML += `<div class="stat-card">
+                        <div class="stat-value">${result.statistics.rawIssuesFound}</div>
+                        <div class="stat-label">Raw Issues</div>
+                    </div>`;
+                    resultHTML += `<div class="stat-card">
+                        <div class="stat-value">${result.issues.length}</div>
+                        <div class="stat-label">Final Issues</div>
+                    </div>`;
+                    resultHTML += `<div class="stat-card">
+                        <div class="stat-value">${result.statistics.deduplicationEfficiency}%</div>
+                        <div class="stat-label">Efficiency</div>
+                    </div>`;
+                    resultHTML += `<div class="stat-card">
+                        <div class="stat-value">${result.statistics.rawIssuesFound - result.issues.length}</div>
+                        <div class="stat-label">Duplicates Removed</div>
+                    </div>`;
+                    resultHTML += `</div>\n\n`;
+                    
+                    const efficiency = result.statistics.deduplicationEfficiency;
+                    const efficiencyRating = efficiency > 30 ? 'Excellent 🏆' :
+                                          efficiency > 15 ? 'Good 👍' :
+                                          efficiency > 0 ? 'Basic ⚠️' : 'No Duplicates';
+                    
+                    resultHTML += `✅ <strong>Deduplication Status:</strong> ${efficiencyRating}\n`;
+                    resultHTML += `📊 <strong>Efficiency:</strong> ${efficiency}% of raw issues were duplicates\n\n`;
+                } else {
+                    resultHTML += `📊 <strong>Issues Found:</strong> ${result.issues.length}\n`;
+                    resultHTML += `⚠️ <strong>Note:</strong> Deduplication metrics not available\n\n`;
+                }
+                
+                // Show engine contributions
+                resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
+                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                    resultHTML += `   • ${engine}: ${issues} issues\n`;
+                }
+                
+                // Show final issues
+                if (result.issues.length > 0) {
+                    resultHTML += `\n🔍 <strong>Final Deduplicated Issues:</strong>\n`;
+                    result.issues.forEach((issue, index) => {
+                        resultHTML += `\n${index + 1}. ${issue.message}`;
+                        if (issue.sourceEngines && issue.sourceEngines.length > 1) {
+                            resultHTML += ` <em>(merged from: ${issue.sourceEngines.join(', ')})</em>`;
+                        } else {
+                            resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
+                        }
+                    });
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Deduplication test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // View comprehensive statistics
+        window.viewStatistics = async function() {
+            const container = document.getElementById('statisticsResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📊 Loading statistics...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    await initializeService();
+                }
+                
+                const stats = multiEngineService.getStatistics();
+                
+                let resultHTML = `<strong>📊 World-Class Grammar System Statistics</strong>\n\n`;
+                
+                // Global stats
+                resultHTML += `🌍 <strong>Global Statistics:</strong>\n`;
+                resultHTML += `   • Total Engines: ${stats.global.totalEngines}\n`;
+                resultHTML += `   • Total Checks: ${stats.global.totalChecks}\n`;
+                resultHTML += `   • Average Processing Time: ${Math.round(stats.global.averageProcessingTime)}ms\n`;
+                resultHTML += `   • Average Errors Detected: ${Math.round(stats.global.averageErrorsDetected)}\n`;
+                resultHTML += `   • Deduplication Efficiency: ${stats.global.deduplicationEfficiency}%\n\n`;
+                
+                // Engine details
+                resultHTML += `🔧 <strong>Engine Performance:</strong>\n`;
+                for (const [engineName, engineStats] of Object.entries(stats.engines)) {
+                    const metadata = engineStats.metadata || {};
+                    const status = metadata.isEnabled ? '✅ Active' : '❌ Disabled';
+                    
+                    resultHTML += `\n<strong>${engineName}</strong> ${status}\n`;
+                    resultHTML += `   • Priority: ${metadata.priority || 'N/A'}\n`;
+                    resultHTML += `   • Checks Performed: ${engineStats.checksPerformed}\n`;
+                    resultHTML += `   • Errors Found: ${engineStats.errorsFound}\n`;
+                    resultHTML += `   • Average Processing Time: ${Math.round(engineStats.averageProcessingTime)}ms\n`;
+                    resultHTML += `   • Success Rate: ${Math.round((engineStats.successRate || 1) * 100)}%\n`;
+                    resultHTML += `   • Error Types: ${(metadata.errorTypes || []).join(', ')}\n`;
+                    if (engineStats.lastUsed) {
+                        resultHTML += `   • Last Used: ${new Date(engineStats.lastUsed).toLocaleTimeString()}\n`;
+                    }
+                }
+                
+                resultHTML += `\n\n🎯 <strong>Performance Goals:</strong>\n`;
+                resultHTML += `   • Processing Time: <800ms `;
+                resultHTML += stats.global.averageProcessingTime < 800 ? '✅' : '❌';
+                resultHTML += `\n   • Error Detection: 15-25 errors `;
+                resultHTML += stats.global.averageErrorsDetected >= 15 ? '✅' : '❌';
+                resultHTML += `\n   • Engines Running: 8+ `;
+                resultHTML += stats.global.totalEngines >= 8 ? '✅' : '❌';
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result info';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Statistics loading failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Initialize service on page load
+        window.addEventListener('load', async () => {
+            console.log('🌍 Page loaded, initializing World-Class Grammar System...');
+            try {
+                await initializeService();
+                console.log('✅ Ready to test!');
+            } catch (error) {
+                console.error('❌ Initialization failed:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

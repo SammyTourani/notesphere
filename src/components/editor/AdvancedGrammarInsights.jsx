@@ -19,7 +19,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import InteractiveGrammarHighlighter from './InteractiveGrammarHighlighter';
 import { createCommandBasedReplacer } from '../../services/CommandBasedReplacer';
-import advancedGrammarService from '../../services/AdvancedGrammarService';
 import { registerGrammarAssistantCallbacks } from '../../extensions/GrammarExtension';
 import { 
   BarChart3, 
@@ -44,14 +43,15 @@ import {
   SortDesc
 } from 'lucide-react';
 
-const AdvancedGrammarInsights = ({ 
+const AdvancedGrammarInsights = React.forwardRef(({ 
   editor, 
   content, 
   isVisible, 
   onToggle, 
   onOpen,
-  onContentUpdate 
-}) => {
+  onContentUpdate,
+  grammarController 
+}, ref) => {
   // === CORE STATE ===
   const [issues, setIssues] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,6 +59,13 @@ const AdvancedGrammarInsights = ({
   const [activeView, setActiveView] = useState('issues'); // Changed from 'overview' to 'issues'
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('priority');
+  
+  // === ISSUE FOCUS STATE ===
+  const [highlightedIssueId, setHighlightedIssueId] = useState(null);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [isFocusingIssue, setIsFocusingIssue] = useState(false);
+  const highlightTimeoutRef = useRef(null);
+  const focusTimeoutRef = useRef(null);
   
   // === ANALYTICS STATE ===
   const [analytics, setAnalytics] = useState({
@@ -256,53 +263,26 @@ const AdvancedGrammarInsights = ({
 
   // === AUTO-FIX FUNCTION ===
   const autoFixIssue = useCallback(async (issue, suggestion) => {
-    if (!editor || !suggestion) return;
+    if (!grammarController || !suggestion) return;
 
     try {
-      console.log('🔧 Auto-fixing issue:', issue.text, '→', suggestion);
+      console.log('🔧 Auto-fixing issue via grammar controller:', issue.originalText || issue.text, '→', suggestion);
       
-      const currentContent = editor.getText();
-      const targetText = issue.displayText || issue.text;
+      // Use the grammar controller to apply the suggestion
+      const success = grammarController.applySuggestion(issue.id, suggestion);
       
-      if (!targetText) return;
-
-      // Method 1: Simple string replacement
-      if (currentContent.includes(targetText)) {
-        const newContent = currentContent.replace(targetText, suggestion);
-        if (newContent !== currentContent) {
-          editor.commands.setContent(newContent, false);
-          removeIssue(issue.id);
-          return;
-        }
-      }
-
-      // Method 2: Position-based replacement
-      if (typeof issue.offset === 'number' && typeof issue.length === 'number') {
-        const success = editor.chain()
-          .focus()
-          .setTextSelection({ from: issue.offset + 1, to: issue.offset + issue.length + 1 })
-          .insertContent(suggestion)
-          .run();
-        
-        if (success) {
-          removeIssue(issue.id);
-          return;
-        }
-      }
-
-      // Method 3: CommandBasedReplacer fallback
-      if (textReplacer) {
-        const success = textReplacer.applySuggestion(issue, suggestion);
-        if (success) {
-          removeIssue(issue.id);
-          return;
-        }
+      if (success) {
+        // Remove the issue from local state
+        removeIssue(issue.id);
+        console.log('✅ Issue fixed successfully');
+      } else {
+        console.warn('❌ Failed to apply suggestion via grammar controller');
       }
 
     } catch (error) {
       console.error('❌ Error during auto-fix:', error);
     }
-  }, [editor, textReplacer, removeIssue]);
+  }, [grammarController, removeIssue]);
 
   // === AUTO-FIX ALL FUNCTION (DISABLED) ===
   // Quick fix functionality temporarily disabled due to issues
@@ -317,30 +297,32 @@ const AdvancedGrammarInsights = ({
     return minutes === 1 ? '1 min read' : `${minutes} min read`;
   }, []);
 
-  // === CONTENT ANALYSIS ===
-  const analyzeContent = useCallback(async () => {
-    if (!content || !content.trim()) {
-      setIssues([]);
+  // === GRAMMAR CONTROLLER INTEGRATION ===
+  useEffect(() => {
+    if (!grammarController) {
+      console.log('⚠️ No grammar controller available');
       return;
     }
-
-    setIsProcessing(true);
-
-    try {
-      const result = await advancedGrammarService.checkText(content);
+    
+    // Set up listeners for grammar controller events
+    const handleCheckStarted = () => {
+      setIsProcessing(true);
+    };
+    
+    const handleCheckCompleted = ({ issues: controllerIssues }) => {
+      setIsProcessing(false);
       
-      if (result && result.issues) {
-        const processedIssues = result.issues.map((issue, index) => ({
+      if (controllerIssues && controllerIssues.length > 0) {
+        // Process issues for UI
+        const processedIssues = controllerIssues.map((issue) => ({
           ...issue,
-          id: issue.id || `issue-${index}-${Date.now()}`,
-          displayText: issue.text || issue.match,
-          isAutoFixable: !!(issue.suggestions && issue.suggestions.length > 0),
-          category: issue.category || 'style'
+          displayText: issue.originalText || issue.text || '',
+          isAutoFixable: !!(issue.suggestions && issue.suggestions.length > 0)
         }));
 
         setIssues(processedIssues);
         
-        // Calculate analytics
+        // Calculate analytics from controller issues
         const autoFixableCount = processedIssues.filter(i => i.isAutoFixable).length;
         const totalWords = content.split(/\s+/).filter(word => word.length > 0).length;
         const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
@@ -367,32 +349,177 @@ const AdvancedGrammarInsights = ({
           professionalismScore: Math.max(70, 100 - (processedIssues.length * 1.8)),
           clarityScore: Math.max(65, 100 - (processedIssues.length * 1.6))
         }));
-      }
-    } catch (error) {
-      console.error('❌ Error analyzing content:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [content]);
-
-  // === DEBOUNCED CONTENT ANALYSIS ===
-  useEffect(() => {
-    if (updateTimeoutRef.current) {
-      clearTimeout(updateTimeoutRef.current);
-    }
-
-    updateTimeoutRef.current = setTimeout(() => {
-      if (isVisible) {
-        analyzeContent();
-      }
-    }, 1500);
-
-    return () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
+      } else {
+        // No issues found
+        setIssues([]);
+        setAnalytics(prev => ({
+          ...prev,
+          totalIssues: 0,
+          autoFixableCount: 0,
+          writingScore: 100,
+          categoryBreakdown: {}
+        }));
       }
     };
-  }, [content, isVisible, analyzeContent]);
+    
+    const handleCheckFailed = ({ error }) => {
+      setIsProcessing(false);
+      console.error('❌ Grammar check failed:', error);
+      setIssues([]);
+    };
+    
+    // Register listeners
+    grammarController.on('checkStarted', handleCheckStarted);
+    grammarController.on('checkCompleted', handleCheckCompleted);
+    grammarController.on('checkFailed', handleCheckFailed);
+    
+    // Get current issues if available
+    const currentIssues = grammarController.getCurrentIssues();
+    if (currentIssues && currentIssues.length > 0) {
+      handleCheckCompleted({ issues: currentIssues });
+    }
+    
+    console.log('✅ AdvancedGrammarInsights connected to grammar controller');
+    
+    return () => {
+      // Cleanup listeners
+      grammarController.off('checkStarted', handleCheckStarted);
+      grammarController.off('checkCompleted', handleCheckCompleted);
+      grammarController.off('checkFailed', handleCheckFailed);
+    };
+  }, [grammarController, content]);
+
+  // === TRIGGER GRAMMAR CHECK WHEN VISIBLE ===
+  useEffect(() => {
+    if (isVisible && grammarController) {
+      // Force a grammar check when the sidebar becomes visible
+      console.log('📊 Grammar sidebar opened, forcing check');
+      grammarController.forceGrammarCheck();
+    }
+  }, [isVisible, grammarController]);
+
+  // === SCROLL TO ISSUE METHOD ===
+  const scrollToIssue = useCallback((issueId) => {
+    if (!issuesListRef.current) {
+      console.warn('❌ Issues list ref not available for scrolling');
+      return;
+    }
+    
+    console.log('📜 Scrolling to issue:', issueId);
+    setIsScrolling(true);
+    
+    // Find the issue element
+    const issueElement = issuesListRef.current.querySelector(`[data-issue-id="${issueId}"]`);
+    
+    if (issueElement) {
+      // Smooth scroll to the issue
+      issueElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+      });
+      
+      // Clear scrolling state after animation
+      setTimeout(() => {
+        setIsScrolling(false);
+      }, 600); // Slightly longer than typical scroll animation
+      
+      console.log('✅ Scrolled to issue:', issueId);
+    } else {
+      console.warn('❌ Issue element not found for scrolling:', issueId);
+      setIsScrolling(false);
+    }
+  }, []);
+
+  // === HIGHLIGHT ISSUE METHOD ===
+  const highlightIssue = useCallback((issueId) => {
+    console.log('✨ Highlighting issue:', issueId);
+    
+    // Set the highlighted issue
+    setHighlightedIssueId(issueId);
+    
+    // Clear highlight after animation duration
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedIssueId(null);
+      console.log('🔄 Highlight cleared for issue:', issueId);
+    }, 2000); // 2 seconds highlight duration
+  }, []);
+
+  // === ISSUE FOCUS METHODS (exposed via ref) ===
+  React.useImperativeHandle(ref, () => ({
+    focusOnIssue: (issue) => {
+      console.log('🎯 AdvancedGrammarInsights: Focusing on issue', issue.id);
+      
+      // Clear any existing focus operations
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      
+      // Set focusing state for visual feedback
+      setIsFocusingIssue(true);
+      setHighlightedIssueId(null);
+      
+      // Step 1: Switch to issues tab if not already active
+      if (activeView !== 'issues') {
+        console.log('📋 Switching to issues tab');
+        setActiveView('issues');
+      }
+      
+      // Step 2: Check if issue exists in current list
+      const issueExists = issues.some(i => i.id === issue.id);
+      
+      if (!issueExists) {
+        console.log('⚠️ Issue not found in current list, forcing grammar check');
+        
+        // Force a grammar check if the issue isn't in the current list
+        if (grammarController) {
+          grammarController.forceGrammarCheck().then(() => {
+            // Retry after forced check
+            focusTimeoutRef.current = setTimeout(() => {
+              setIsFocusingIssue(false);
+              scrollToIssue(issue.id);
+              highlightIssue(issue.id);
+            }, 200);
+          }).catch(() => {
+            setIsFocusingIssue(false);
+          });
+        } else {
+          setIsFocusingIssue(false);
+        }
+        return;
+      }
+      
+      // Step 3: Wait a moment for tab switching, then scroll and highlight
+      focusTimeoutRef.current = setTimeout(() => {
+        setIsFocusingIssue(false);
+        scrollToIssue(issue.id);
+        highlightIssue(issue.id);
+      }, 150); // Small delay for tab switching animation
+    },
+    
+    switchToIssuesTab: () => {
+      setActiveView('issues');
+    },
+    
+    getCurrentView: () => activeView,
+    
+    getIssueCount: () => issues.length
+  }), [activeView, issues, scrollToIssue, highlightIssue, grammarController]);
+
+  // === CLEANUP TIMEOUTS ===
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      if (focusTimeoutRef.current) {
+        clearTimeout(focusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // === FILTERED AND SORTED ISSUES ===
   const filteredIssues = useMemo(() => {
@@ -422,16 +549,33 @@ const AdvancedGrammarInsights = ({
     const category = categoryStyles[issue.category] || { color: 'rgb(107 114 128)', bg: 'rgba(107, 114, 128, 0.1)', icon: Info };
     const IconComponent = category.icon;
     const suggestion = issue.suggestions?.[0];
+    const isHighlighted = highlightedIssueId === issue.id;
 
     return (
       <motion.div
         key={issue.id}
         data-issue-id={issue.id}
         initial={{ opacity: 0, y: 10, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
+        animate={{ 
+          opacity: 1, 
+          y: 0, 
+          scale: isHighlighted ? 1.02 : 1,
+          boxShadow: isHighlighted 
+            ? '0 25px 50px -12px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.3)' 
+            : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
+        }}
         exit={{ opacity: 0, y: -10, scale: 0.95 }}
-        transition={{ delay: index * 0.02 }}
-        className="group p-5 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg transition-all duration-200"
+        transition={{ 
+          delay: index * 0.02,
+          type: "spring",
+          stiffness: 300,
+          damping: 30
+        }}
+        className={`group p-5 backdrop-blur-sm rounded-2xl border transition-all duration-300 ${
+          isHighlighted 
+            ? 'bg-blue-50/90 dark:bg-blue-900/30 border-blue-300/60 dark:border-blue-600/50 shadow-2xl transform' 
+            : 'bg-white/60 dark:bg-gray-800/60 border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg'
+        }`}
       >
         <div className="flex items-start gap-4">
           <div className="p-2.5 rounded-xl shadow-sm" style={{ backgroundColor: category.bg }}>
@@ -722,7 +866,7 @@ const AdvancedGrammarInsights = ({
     <div className="space-y-4 pb-8">
       {/* Quick Fix All Button - Temporarily Disabled */}
 
-      {/* Filters */}
+      {/* Filters & Focus Indicator */}
       <div className="flex items-center justify-between gap-4 p-4 bg-white/40 dark:bg-gray-800/40 rounded-xl border border-gray-200/30 dark:border-gray-700/30">
         <div className="flex items-center gap-3">
           <Filter size={16} className="text-gray-500 dark:text-gray-400" />
@@ -738,6 +882,25 @@ const AdvancedGrammarInsights = ({
             <option value="punctuation">Punctuation</option>
             <option value="word_choice">Word Choice</option>
           </select>
+          
+          {/* Focus Indicator */}
+          {isFocusingIssue && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex items-center gap-2 ml-3 px-3 py-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-full border border-blue-200 dark:border-blue-800"
+            >
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full"
+              />
+              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                Focusing...
+              </span>
+            </motion.div>
+          )}
         </div>
         
         <div className="flex items-center gap-3">
@@ -771,7 +934,7 @@ const AdvancedGrammarInsights = ({
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div ref={issuesListRef} className="space-y-4">
           <AnimatePresence>
             {filteredIssues.map((issue, index) => renderIssueCard(issue, index))}
           </AnimatePresence>
@@ -898,6 +1061,6 @@ const AdvancedGrammarInsights = ({
       </AnimatePresence>
     </>
   );
-};
+});
 
 export default AdvancedGrammarInsights;

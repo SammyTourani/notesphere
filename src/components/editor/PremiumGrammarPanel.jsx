@@ -20,7 +20,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createCommandBasedReplacer } from '../../services/CommandBasedReplacer';
-import advancedGrammarService from '../../services/AdvancedGrammarService';
+import AdvancedGrammarService from '../../services/AdvancedGrammarService';
+
+// Create instance of AdvancedGrammarService
+const advancedGrammarService = new AdvancedGrammarService();
 import { 
   CheckCircle2, 
   AlertTriangle, 

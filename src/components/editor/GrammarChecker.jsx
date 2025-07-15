@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import advancedGrammarService from '../../services/AdvancedGrammarService';
+import AdvancedGrammarService from '../../services/AdvancedGrammarService';
+
+// Create instance of AdvancedGrammarService
+const advancedGrammarService = new AdvancedGrammarService();
 
 const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +12,27 @@ const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [issueStats, setIssueStats] = useState({});
   const panelRef = useRef(null);
+
+  // Helper functions for categories
+  const getCategoryColor = (category) => {
+    switch (category) {
+      case 'grammar': return 'red';
+      case 'spelling': return 'orange';
+      case 'style': return 'blue';
+      case 'punctuation': return 'purple';
+      default: return 'gray';
+    }
+  };
+
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'grammar': return '⚠️';
+      case 'spelling': return '🔤';
+      case 'style': return '✨';
+      case 'punctuation': return '❗';
+      default: return '📝';
+    }
+  };
 
   // Calculate issue statistics
   useEffect(() => {
@@ -180,8 +204,8 @@ const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
                 <div className="mt-2 flex flex-wrap gap-2">
                   {Object.entries(issueStats).map(([category, count]) => {
                     if (category === 'total') return null;
-                    const color = grammarService.getCategoryColor(category);
-                    const icon = grammarService.getCategoryIcon(category);
+                                const color = getCategoryColor(category);
+            const icon = getCategoryIcon(category);
                     
                     return (
                       <span
@@ -225,7 +249,7 @@ const GrammarChecker = ({ editor, content, onSuggestionApply }) => {
                   {Object.entries(groupedIssues).map(([category, issues]) => (
                     <div key={category}>
                       <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 capitalize flex items-center space-x-2">
-                        <span>{grammarService.getCategoryIcon(category)}</span>
+                        <span>{getCategoryIcon(category)}</span>
                         <span>{category}</span>
                         <span className="text-xs text-gray-500">({issues.length})</span>
                       </h4>
