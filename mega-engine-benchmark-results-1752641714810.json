@@ -1,0 +1,381 @@
+{
+  "timestamp": "2025-07-16T04:55:14.810Z",
+  "results": {
+    "grammar": {
+      "total": 12,
+      "detected": 3,
+      "accuracy": 25,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "The cats is hungry.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [
+            "Subject-verb agreement error"
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "Each of the students have finished their homework.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "Neither John nor Mary were present.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "The data shows that none of the participants was prepared.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "Between you and I, this is wrong.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "Me and my friend went to the store.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "The teacher gave the book to John and I.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "I have went to the store yesterday.",
+          "expected": [
+            "verb tense"
+          ],
+          "detected": [
+            "Verb tense error"
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "If I was you, I would be careful.",
+          "expected": [
+            "subjunctive mood"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "I should of known better.",
+          "expected": [
+            "verb tense"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "I need to buy car.",
+          "expected": [
+            "missing article"
+          ],
+          "detected": [
+            "Missing article"
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "grammar"
+        },
+        {
+          "text": "The United States is the country.",
+          "expected": [
+            "redundant article"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar"
+        }
+      ]
+    },
+    "spelling": {
+      "total": 6,
+      "detected": 2,
+      "accuracy": 33.33333333333333,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "I recieved your mesage yesturday.",
+          "expected": [
+            "received",
+            "message",
+            "yesterday"
+          ],
+          "detected": [
+            "Spelling error: \"received\"",
+            "Spelling error: \"message\"",
+            "Spelling error: \"yesterday\""
+          ],
+          "correct": true
+        },
+        {
+          "text": "The databse performance is effected by querys.",
+          "expected": [
+            "database",
+            "affected",
+            "queries"
+          ],
+          "detected": [],
+          "correct": false
+        },
+        {
+          "text": "This is a neccessary step that will definitly help.",
+          "expected": [
+            "necessary",
+            "definitely"
+          ],
+          "detected": [],
+          "correct": false
+        },
+        {
+          "text": "Their going to loose there minds when they here the news.",
+          "expected": [
+            "they're",
+            "lose",
+            "their",
+            "hear"
+          ],
+          "detected": [],
+          "correct": false
+        },
+        {
+          "text": "I could of helped you, but you're going to have to except the consequences.",
+          "expected": [
+            "could have",
+            "accept"
+          ],
+          "detected": [
+            "Spelling error: \"could have\""
+          ],
+          "correct": true
+        },
+        {
+          "text": "Its important to recieve feedback from others who care about you.",
+          "expected": [
+            "It's",
+            "receive"
+          ],
+          "detected": [],
+          "correct": false
+        }
+      ]
+    },
+    "style": {
+      "total": 5,
+      "detected": 2,
+      "accuracy": 40,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "Due to the fact that we need to think outside the box, we should separate the students who performed a lot better than the others.",
+          "expected": [
+            "wordiness"
+          ],
+          "detected": [
+            "Wordiness: Consider \"Because\""
+          ],
+          "correct": true
+        },
+        {
+          "text": "In order to achieve better results, we need to accommodate their needs more effectively.",
+          "expected": [
+            "wordiness"
+          ],
+          "detected": [],
+          "correct": false
+        },
+        {
+          "text": "The implementation of the aforementioned methodology necessitates the utilization of sophisticated computational algorithms.",
+          "expected": [
+            "wordiness",
+            "complexity"
+          ],
+          "detected": [],
+          "correct": false
+        },
+        {
+          "text": "The report was written by John and was reviewed by the committee.",
+          "expected": [
+            "passive voice"
+          ],
+          "detected": [
+            "Passive voice detected"
+          ],
+          "correct": true
+        },
+        {
+          "text": "The data was analyzed and conclusions were drawn.",
+          "expected": [
+            "passive voice"
+          ],
+          "detected": [],
+          "correct": false
+        }
+      ]
+    },
+    "falsePositives": {
+      "total": 4,
+      "falsePositives": 1,
+      "rate": 25,
+      "details": [
+        {
+          "text": "The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the alphabet.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "She carefully reviewed the document before submitting it to her supervisor.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "The research findings indicate a significant correlation between exercise and mental health outcomes.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "The API endpoint returns a 404 error when the user_id parameter is null or undefined.",
+          "detected": [
+            "False positive detection"
+          ],
+          "falsePositiveCount": 1
+        }
+      ]
+    },
+    "performance": {
+      "short": {
+        "textLength": 19,
+        "wordCount": 4,
+        "averageTime": 0,
+        "minTime": 0,
+        "maxTime": 0,
+        "times": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "medium": {
+        "textLength": 171,
+        "wordCount": 28,
+        "averageTime": 0,
+        "minTime": 0,
+        "maxTime": 0,
+        "times": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "long": {
+        "textLength": 617,
+        "wordCount": 106,
+        "averageTime": 0,
+        "minTime": 0,
+        "maxTime": 0,
+        "times": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "cacheEfficiency": {
+        "firstRunTime": 0,
+        "avgCacheTime": 0,
+        "cacheEfficiency": null,
+        "cacheTimes": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "overall": {
+      "precision": 0.875,
+      "recall": 0.30434782608695654,
+      "f1Score": 0.4516129032258065
+    }
+  },
+  "summary": {
+    "f1Score": 45.16129032258065,
+    "precision": 87.5,
+    "recall": 30.434782608695656,
+    "falsePositiveRate": 25,
+    "averageProcessingTime": 0
+  }
+}

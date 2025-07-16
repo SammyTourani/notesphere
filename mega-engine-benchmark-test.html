@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Mega Engine Benchmark Suite - Full Analysis</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: #f8fafc;
+        }
+        .test-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .success { 
+            background: #f0fff4; 
+            border: 2px solid #68d391; 
+            color: #22543d;
+        }
+        .error { 
+            background: #fed7d7; 
+            border: 2px solid #fc8181; 
+            color: #742a2a;
+        }
+        .warning { 
+            background: #fefcbf; 
+            border: 2px solid #f6e05e; 
+            color: #744210;
+        }
+        .info {
+            background: #ebf8ff;
+            border: 2px solid #63b3ed;
+            color: #2a4365;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .metric-label {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .comparison {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        .improvement {
+            color: #38a169;
+            font-weight: bold;
+        }
+        .regression {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        .stable {
+            color: #718096;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Mega Engine Benchmark Suite</h1>
+        <p style="text-align: center; color: #718096; font-size: 18px; margin-bottom: 40px;">
+            Comprehensive Analysis of Current Mega Engine Performance
+        </p>
+
+        <!-- Engine Status -->
+        <div class="test-section">
+            <h2>🚀 Engine Status & Initialization</h2>
+            <p>Verify Mega Engine is properly initialized and ready for testing</p>
+            <button onclick="checkEngineStatus()">Check Engine Status</button>
+            <div id="engineStatus" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Full Benchmark Suite -->
+        <div class="test-section">
+            <h2>📊 Complete Benchmark Analysis</h2>
+            <p>Run comprehensive accuracy, performance, and reliability tests</p>
+            <button onclick="runFullBenchmark()">Run Full Benchmark Suite</button>
+            <div id="benchmarkResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Grammar Accuracy Test -->
+        <div class="test-section">
+            <h2>📚 Grammar Accuracy Analysis</h2>
+            <p>Test grammar detection across all categories with precision/recall metrics</p>
+            <button onclick="testGrammarAccuracy()">Test Grammar Accuracy</button>
+            <div id="grammarResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Spelling Accuracy Test -->
+        <div class="test-section">
+            <h2>🔤 Spelling Accuracy Analysis</h2>
+            <p>Test spelling detection with common misspellings and homophones</p>
+            <button onclick="testSpellingAccuracy()">Test Spelling Accuracy</button>
+            <div id="spellingResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Style Accuracy Test -->
+        <div class="test-section">
+            <h2>✨ Style Accuracy Analysis</h2>
+            <p>Test style detection including wordiness, passive voice, and readability</p>
+            <button onclick="testStyleAccuracy()">Test Style Accuracy</button>
+            <div id="styleResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Performance Test -->
+        <div class="test-section">
+            <h2>⚡ Performance Analysis</h2>
+            <p>Measure processing speed, memory usage, and cache efficiency</p>
+            <button onclick="testPerformance()">Test Performance</button>
+            <div id="performanceResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- False Positive Analysis -->
+        <div class="test-section">
+            <h2>✅ False Positive Analysis</h2>
+            <p>Test with clean text to measure false positive rate</p>
+            <button onclick="testFalsePositives()">Test False Positives</button>
+            <div id="falsePositiveResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Baseline Comparison -->
+        <div class="test-section">
+            <h2>📈 Baseline Comparison</h2>
+            <p>Compare current results with previous baseline and industry standards</p>
+            <button onclick="compareBaselines()">Compare Baselines</button>
+            <div id="comparisonResults" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let multiEngineService = null;
+        let benchmarkSuite = null;
+        let testRunner = null;
+
+        // Initialize the Mega Engine and test infrastructure
+        async function initializeSystem() {
+            try {
+                console.log('🧪 Initializing Mega Engine Benchmark System...');
+                
+                // Import the test runner and benchmark suite
+                const { default: MegaEngineTestRunner } = await import('./mega-engine/test-runner.js');
+                const { default: MegaEngineBenchmarkSuite } = await import('./mega-engine/benchmarks/test-suite.js');
+                
+                // Initialize test runner
+                testRunner = new MegaEngineTestRunner();
+                benchmarkSuite = new MegaEngineBenchmarkSuite();
+                
+                // Initialize the Multi-Engine Grammar Service
+                const { default: MultiEngineGrammarService } = await import('./src/services/MultiEngineGrammarService.ts');
+                
+                multiEngineService = new MultiEngineGrammarService({
+                    maxConcurrentRequests: 5,
+                    targetProcessingTime: 200,
+                    enableDeduplication: true,
+                    enableCaching: true,
+                    enableFailover: true
+                });
+                
+                // Wait for initialization
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                console.log('✅ Mega Engine Benchmark System initialized successfully');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize benchmark system:', error);
+                return false;
+            }
+        }
+
+        // Check engine status
+        window.checkEngineStatus = async function() {
+            const container = document.getElementById('engineStatus');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔄 Checking engine status...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const stats = multiEngineService.getStatistics();
+                
+                let statusHTML = '<div class="success">✅ Mega Engine Status Report</div>\n\n';
+                statusHTML += `<div class="stats-grid">`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.totalRequests}</div>
+                    <div class="stat-label">Total Requests</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.successRate)}%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.averageProcessingTime)}ms</div>
+                    <div class="stat-label">Avg Processing Time</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.cacheHitRate}%</div>
+                    <div class="stat-label">Cache Hit Rate</div>
+                </div>`;
+                
+                statusHTML += `</div>\n\n`;
+                
+                statusHTML += '<strong>🔧 Engine Details:</strong>\n';
+                for (const engine of stats.engines) {
+                    const isLoaded = engine.status === 'loaded' ? '✅' : '❌';
+                    statusHTML += `\n${isLoaded} <strong>${engine.name}</strong>`;
+                    statusHTML += `\n   └─ Status: ${engine.status}`;
+                    statusHTML += `\n   └─ Health: ${engine.health.overallHealth}`;
+                    statusHTML += `\n   └─ Avg Time: ${Math.round(engine.health.averageProcessingTime || 0)}ms`;
+                }
+                
+                container.innerHTML = statusHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Engine status check failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Run full benchmark suite
+        window.runFullBenchmark = async function() {
+            const container = document.getElementById('benchmarkResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🚀 Running full benchmark suite...</div>';
+            
+            try {
+                if (!multiEngineService || !testRunner) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await testRunner.runFullTestSuite(multiEngineService);
+                
+                let resultHTML = '<div class="success">📊 Full Benchmark Results</div>\n\n';
+                
+                // Display summary metrics
+                if (results.summary) {
+                    resultHTML += '<strong>📈 Overall Summary:</strong>\n';
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Overall Success:</span>
+                        <span class="metric-value">${results.summary.overall?.success ? '✅' : '❌'}</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Accuracy (F1 Score):</span>
+                        <span class="metric-value">${results.summary.benchmarks?.accuracy?.toFixed(1)}%</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Precision:</span>
+                        <span class="metric-value">${results.summary.benchmarks?.precision?.toFixed(1)}%</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Recall:</span>
+                        <span class="metric-value">${results.summary.benchmarks?.recall?.toFixed(1)}%</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Avg Processing Time:</span>
+                        <span class="metric-value">${results.summary.performance?.averageTime?.toFixed(1)}ms</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Cache Efficiency:</span>
+                        <span class="metric-value">${results.summary.performance?.cacheEfficiency?.toFixed(1)}%</span>
+                    </div>`;
+                }
+                
+                // Display detailed results
+                if (results.tests?.benchmarks?.success) {
+                    resultHTML += '\n<strong>📊 Benchmark Details:</strong>\n';
+                    const bench = results.tests.benchmarks.results;
+                    
+                    if (bench.results?.grammar) {
+                        resultHTML += `\n📚 Grammar Accuracy: ${bench.results.grammar.accuracy.toFixed(1)}%`;
+                        resultHTML += `\n   └─ Detected: ${bench.results.grammar.detected}/${bench.results.grammar.total}`;
+                        resultHTML += `\n   └─ False Positives: ${bench.results.grammar.falsePositives}`;
+                    }
+                    
+                    if (bench.results?.spelling) {
+                        resultHTML += `\n🔤 Spelling Accuracy: ${bench.results.spelling.accuracy.toFixed(1)}%`;
+                        resultHTML += `\n   └─ Detected: ${bench.results.spelling.detected}/${bench.results.spelling.total}`;
+                        resultHTML += `\n   └─ False Positives: ${bench.results.spelling.falsePositives}`;
+                    }
+                    
+                    if (bench.results?.style) {
+                        resultHTML += `\n✨ Style Accuracy: ${bench.results.style.accuracy.toFixed(1)}%`;
+                        resultHTML += `\n   └─ Detected: ${bench.results.style.detected}/${bench.results.style.total}`;
+                        resultHTML += `\n   └─ False Positives: ${bench.results.style.falsePositives}`;
+                    }
+                }
+                
+                // Display performance results
+                if (results.tests?.performance?.success) {
+                    resultHTML += '\n<strong>⚡ Performance Details:</strong>\n';
+                    const perf = results.tests.performance.results;
+                    
+                    resultHTML += `\n📝 Text Processing:`;
+                    resultHTML += `\n   └─ Short Text: ${perf.shortText?.averageTime?.toFixed(1)}ms`;
+                    resultHTML += `\n   └─ Medium Text: ${perf.mediumText?.averageTime?.toFixed(1)}ms`;
+                    resultHTML += `\n   └─ Long Text: ${perf.longText?.averageTime?.toFixed(1)}ms`;
+                    
+                    if (perf.cacheEfficiency) {
+                        resultHTML += `\n💾 Cache Efficiency: ${perf.cacheEfficiency.cacheEfficiency?.toFixed(1)}%`;
+                        resultHTML += `\n   └─ First Run: ${perf.cacheEfficiency.firstRunTime?.toFixed(1)}ms`;
+                        resultHTML += `\n   └─ Cached Run: ${perf.cacheEfficiency.avgCacheTime?.toFixed(1)}ms`;
+                    }
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Full benchmark failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test grammar accuracy specifically
+        window.testGrammarAccuracy = async function() {
+            const container = document.getElementById('grammarResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📚 Testing grammar accuracy...</div>';
+            
+            try {
+                if (!multiEngineService || !benchmarkSuite) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await benchmarkSuite.testGrammarAccuracy(multiEngineService);
+                
+                let resultHTML = '<div class="success">📚 Grammar Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                
+                // Show detailed results
+                if (results.details && results.details.length > 0) {
+                    resultHTML += '\n<strong>📋 Detailed Results:</strong>\n';
+                    results.details.slice(0, 10).forEach((detail, index) => {
+                        resultHTML += `\n${index + 1}. "${detail.text.substring(0, 50)}..."`;
+                        resultHTML += `\n   └─ Expected: ${detail.expected.join(', ')}`;
+                        resultHTML += `\n   └─ Detected: ${detail.detected.length > 0 ? detail.detected.join(', ') : 'None'}`;
+                        resultHTML += `\n   └─ Status: ${detail.correct ? '✅ Correct' : '❌ Missed'}`;
+                    });
+                    
+                    if (results.details.length > 10) {
+                        resultHTML += `\n... and ${results.details.length - 10} more tests`;
+                    }
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Grammar accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test spelling accuracy specifically
+        window.testSpellingAccuracy = async function() {
+            const container = document.getElementById('spellingResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔤 Testing spelling accuracy...</div>';
+            
+            try {
+                if (!multiEngineService || !benchmarkSuite) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await benchmarkSuite.testSpellingAccuracy(multiEngineService);
+                
+                let resultHTML = '<div class="success">🔤 Spelling Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Spelling accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test style accuracy specifically
+        window.testStyleAccuracy = async function() {
+            const container = document.getElementById('styleResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>✨ Testing style accuracy...</div>';
+            
+            try {
+                if (!multiEngineService || !benchmarkSuite) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await benchmarkSuite.testStyleAccuracy(multiEngineService);
+                
+                let resultHTML = '<div class="success">✨ Style Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Style accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test performance specifically
+        window.testPerformance = async function() {
+            const container = document.getElementById('performanceResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>⚡ Testing performance...</div>';
+            
+            try {
+                if (!multiEngineService || !testRunner) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await testRunner.runPerformanceTests(multiEngineService);
+                
+                let resultHTML = '<div class="success">⚡ Performance Results</div>\n\n';
+                
+                if (results.success && results.results) {
+                    const perf = results.results;
+                    
+                    resultHTML += '<strong>📝 Text Processing Performance:</strong>\n';
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Short Text:</span>
+                        <span class="metric-value">${perf.shortText?.averageTime?.toFixed(1)}ms</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Medium Text:</span>
+                        <span class="metric-value">${perf.mediumText?.averageTime?.toFixed(1)}ms</span>
+                    </div>`;
+                    resultHTML += `<div class="metric-row">
+                        <span class="metric-label">Long Text:</span>
+                        <span class="metric-value">${perf.longText?.averageTime?.toFixed(1)}ms</span>
+                    </div>`;
+                    
+                    resultHTML += '\n<strong>💾 Cache Performance:</strong>\n';
+                    if (perf.cacheEfficiency) {
+                        resultHTML += `<div class="metric-row">
+                            <span class="metric-label">Cache Efficiency:</span>
+                            <span class="metric-value">${perf.cacheEfficiency.cacheEfficiency?.toFixed(1)}%</span>
+                        </div>`;
+                        resultHTML += `<div class="metric-row">
+                            <span class="metric-label">First Run Time:</span>
+                            <span class="metric-value">${perf.cacheEfficiency.firstRunTime?.toFixed(1)}ms</span>
+                        </div>`;
+                        resultHTML += `<div class="metric-row">
+                            <span class="metric-label">Cached Run Time:</span>
+                            <span class="metric-value">${perf.cacheEfficiency.avgCacheTime?.toFixed(1)}ms</span>
+                        </div>`;
+                    }
+                    
+                    resultHTML += '\n<strong>🔄 Concurrent Performance:</strong>\n';
+                    if (perf.concurrentRequests) {
+                        Object.entries(perf.concurrentRequests).forEach(([count, metrics]) => {
+                            resultHTML += `<div class="metric-row">
+                                <span class="metric-label">${count} Concurrent:</span>
+                                <span class="metric-value">${metrics.avgTimePerRequest?.toFixed(1)}ms avg</span>
+                            </div>`;
+                        });
+                    }
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Performance test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test false positives
+        window.testFalsePositives = async function() {
+            const container = document.getElementById('falsePositiveResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>✅ Testing false positive rate...</div>';
+            
+            try {
+                if (!multiEngineService || !benchmarkSuite) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const results = await benchmarkSuite.testFalsePositives(multiEngineService);
+                
+                let resultHTML = '<div class="success">✅ False Positive Analysis</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Clean Texts:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives Found:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positive Rate:</span>
+                    <span class="metric-value">${results.falsePositiveRate?.toFixed(1)}%</span>
+                </div>`;
+                
+                // Show false positive details
+                if (results.details && results.details.length > 0) {
+                    resultHTML += '\n<strong>📋 False Positive Details:</strong>\n';
+                    results.details.slice(0, 5).forEach((detail, index) => {
+                        resultHTML += `\n${index + 1}. "${detail.text.substring(0, 50)}..."`;
+                        resultHTML += `\n   └─ False Positives: ${detail.falsePositiveCount}`;
+                        if (detail.detected.length > 0) {
+                            resultHTML += `\n   └─ Detected: ${detail.detected.join(', ')}`;
+                        }
+                    });
+                    
+                    if (results.details.length > 5) {
+                        resultHTML += `\n... and ${results.details.length - 5} more tests`;
+                    }
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ False positive test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Compare with baselines
+        window.compareBaselines = async function() {
+            const container = document.getElementById('comparisonResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📈 Comparing with baselines...</div>';
+            
+            try {
+                // Run current benchmark first
+                if (!multiEngineService || !testRunner) {
+                    const initialized = await initializeSystem();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize benchmark system');
+                    }
+                }
+                
+                const currentResults = await testRunner.runFullTestSuite(multiEngineService);
+                
+                // Define previous baseline (estimated from our conversation)
+                const previousBaseline = {
+                    grammar: { accuracy: 75, precision: 70, recall: 80 },
+                    spelling: { accuracy: 85, precision: 90, recall: 80 },
+                    style: { accuracy: 65, precision: 60, recall: 70 },
+                    performance: { avgTime: 250, maxTime: 500 },
+                    falsePositiveRate: 12
+                };
+                
+                let resultHTML = '<div class="success">📈 Baseline Comparison Results</div>\n\n';
+                
+                // Compare current vs previous
+                const current = currentResults.summary;
+                
+                resultHTML += '<strong>📊 Accuracy Comparison:</strong>\n';
+                
+                // Grammar comparison
+                const grammarChange = current.benchmarks?.accuracy - previousBaseline.grammar.accuracy;
+                const grammarStatus = grammarChange > 0 ? 'improvement' : grammarChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Grammar Accuracy:</span>
+                    <span class="metric-value">${current.benchmarks?.accuracy?.toFixed(1)}%</span>
+                    <span class="${grammarStatus}">(${grammarChange > 0 ? '+' : ''}${grammarChange.toFixed(1)}%)</span>
+                </div>`;
+                
+                // Performance comparison
+                const perfChange = previousBaseline.performance.avgTime - current.performance?.averageTime;
+                const perfStatus = perfChange > 0 ? 'improvement' : perfChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Avg Processing Time:</span>
+                    <span class="metric-value">${current.performance?.averageTime?.toFixed(1)}ms</span>
+                    <span class="${perfStatus}">(${perfChange > 0 ? '+' : ''}${perfChange.toFixed(1)}ms faster)</span>
+                </div>`;
+                
+                // False positive comparison
+                const fpChange = previousBaseline.falsePositiveRate - (current.benchmarks?.falsePositiveRate || 0);
+                const fpStatus = fpChange > 0 ? 'improvement' : fpChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positive Rate:</span>
+                    <span class="metric-value">${current.benchmarks?.falsePositiveRate?.toFixed(1)}%</span>
+                    <span class="${fpStatus}">(${fpChange > 0 ? '+' : ''}${fpChange.toFixed(1)}% improvement)</span>
+                </div>`;
+                
+                resultHTML += '\n<strong>🎯 Industry Standards Comparison:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target Grammar Accuracy:</span>
+                    <span class="metric-value">90%</span>
+                    <span class="${current.benchmarks?.accuracy >= 90 ? 'improvement' : 'regression'}">${current.benchmarks?.accuracy >= 90 ? '✅ Met' : '❌ Below Target'}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target Processing Time:</span>
+                    <span class="metric-value">200ms</span>
+                    <span class="${current.performance?.averageTime <= 200 ? 'improvement' : 'regression'}">${current.performance?.averageTime <= 200 ? '✅ Met' : '❌ Above Target'}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target False Positive Rate:</span>
+                    <span class="metric-value">5%</span>
+                    <span class="${(current.benchmarks?.falsePositiveRate || 0) <= 5 ? 'improvement' : 'regression'}">${(current.benchmarks?.falsePositiveRate || 0) <= 5 ? '✅ Met' : '❌ Above Target'}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Baseline comparison failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Initialize system on page load
+        window.addEventListener('load', async () => {
+            console.log('🧪 Page loaded, initializing Mega Engine Benchmark System...');
+            try {
+                const success = await initializeSystem();
+                if (success) {
+                    console.log('✅ Ready to run benchmarks!');
+                } else {
+                    console.error('❌ System initialization failed');
+                }
+            } catch (error) {
+                console.error('❌ Initialization failed:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

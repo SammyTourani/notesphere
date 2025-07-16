@@ -1,4 +1,5 @@
 // src/context/FontContext.jsx
+import React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
 
 const FontContext = createContext();

@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Real Mega Engine Benchmark Suite</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: #f8fafc;
+        }
+        .test-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .success { 
+            background: #f0fff4; 
+            border: 2px solid #68d391; 
+            color: #22543d;
+        }
+        .error { 
+            background: #fed7d7; 
+            border: 2px solid #fc8181; 
+            color: #742a2a;
+        }
+        .warning { 
+            background: #fefcbf; 
+            border: 2px solid #f6e05e; 
+            color: #744210;
+        }
+        .info {
+            background: #ebf8ff;
+            border: 2px solid #63b3ed;
+            color: #2a4365;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .metric-label {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        .metric-value {
+            font-weight: bold;
+            color: #667eea;
+        }
+        .improvement {
+            color: #38a169;
+            font-weight: bold;
+        }
+        .regression {
+            color: #e53e3e;
+            font-weight: bold;
+        }
+        .stable {
+            color: #718096;
+            font-weight: bold;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Real Mega Engine Benchmark Suite</h1>
+        <p style="text-align: center; color: #718096; font-size: 18px; margin-bottom: 40px;">
+            Comprehensive Analysis of Current Mega Engine Performance
+        </p>
+
+        <!-- Engine Status -->
+        <div class="test-section">
+            <h2>🚀 Engine Status & Initialization</h2>
+            <p>Verify Mega Engine is properly initialized and ready for testing</p>
+            <button onclick="checkEngineStatus()">Check Engine Status</button>
+            <div id="engineStatus" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Full Benchmark Suite -->
+        <div class="test-section">
+            <h2>📊 Complete Benchmark Analysis</h2>
+            <p>Run comprehensive accuracy, performance, and reliability tests</p>
+            <button onclick="runFullBenchmark()">Run Full Benchmark Suite</button>
+            <div id="benchmarkResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Grammar Accuracy Test -->
+        <div class="test-section">
+            <h2>📚 Grammar Accuracy Analysis</h2>
+            <p>Test grammar detection across all categories with precision/recall metrics</p>
+            <button onclick="testGrammarAccuracy()">Test Grammar Accuracy</button>
+            <div id="grammarResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Spelling Accuracy Test -->
+        <div class="test-section">
+            <h2>🔤 Spelling Accuracy Analysis</h2>
+            <p>Test spelling detection with common misspellings and homophones</p>
+            <button onclick="testSpellingAccuracy()">Test Spelling Accuracy</button>
+            <div id="spellingResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Style Accuracy Test -->
+        <div class="test-section">
+            <h2>✨ Style Accuracy Analysis</h2>
+            <p>Test style detection including wordiness, passive voice, and readability</p>
+            <button onclick="testStyleAccuracy()">Test Style Accuracy</button>
+            <div id="styleResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Performance Test -->
+        <div class="test-section">
+            <h2>⚡ Performance Analysis</h2>
+            <p>Measure processing speed, memory usage, and cache efficiency</p>
+            <button onclick="testPerformance()">Test Performance</button>
+            <div id="performanceResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- False Positive Analysis -->
+        <div class="test-section">
+            <h2>✅ False Positive Analysis</h2>
+            <p>Test with clean text to measure false positive rate</p>
+            <button onclick="testFalsePositives()">Test False Positives</button>
+            <div id="falsePositiveResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Baseline Comparison -->
+        <div class="test-section">
+            <h2>📈 Baseline Comparison</h2>
+            <p>Compare current results with previous baseline and industry standards</p>
+            <button onclick="compareBaselines()">Compare Baselines</button>
+            <div id="comparisonResults" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let multiEngineService = null;
+        let benchmarkResults = null;
+
+        // Test cases for comprehensive benchmarking
+        const TEST_CASES = {
+            grammar: {
+                subjectVerbAgreement: [
+                    { text: "The cats is hungry.", expected: ["subject-verb agreement"], category: "grammar" },
+                    { text: "Each of the students have finished their homework.", expected: ["subject-verb agreement"], category: "grammar" },
+                    { text: "Neither John nor Mary were present.", expected: ["subject-verb agreement"], category: "grammar" },
+                    { text: "The data shows that none of the participants was prepared.", expected: ["subject-verb agreement"], category: "grammar" }
+                ],
+                pronounCase: [
+                    { text: "Between you and I, this is wrong.", expected: ["pronoun case"], category: "grammar" },
+                    { text: "Me and my friend went to the store.", expected: ["pronoun case"], category: "grammar" },
+                    { text: "The teacher gave the book to John and I.", expected: ["pronoun case"], category: "grammar" }
+                ],
+                verbTense: [
+                    { text: "I have went to the store yesterday.", expected: ["verb tense"], category: "grammar" },
+                    { text: "If I was you, I would be careful.", expected: ["subjunctive mood"], category: "grammar" },
+                    { text: "I should of known better.", expected: ["verb tense"], category: "grammar" }
+                ],
+                articles: [
+                    { text: "I need to buy car.", expected: ["missing article"], category: "grammar" },
+                    { text: "The United States is the country.", expected: ["redundant article"], category: "grammar" }
+                ]
+            },
+            spelling: {
+                commonMisspellings: [
+                    { text: "I recieved your mesage yesturday.", expected: ["received", "message", "yesterday"], category: "spelling" },
+                    { text: "The databse performance is effected by querys.", expected: ["database", "affected", "queries"], category: "spelling" },
+                    { text: "This is a neccessary step that will definitly help.", expected: ["necessary", "definitely"], category: "spelling" }
+                ],
+                homophones: [
+                    { text: "Their going to loose there minds when they here the news.", expected: ["they're", "lose", "their", "hear"], category: "spelling" },
+                    { text: "I could of helped you, but you're going to have to except the consequences.", expected: ["could have", "accept"], category: "spelling" },
+                    { text: "Its important to recieve feedback from others who care about you.", expected: ["It's", "receive"], category: "spelling" }
+                ]
+            },
+            style: {
+                wordiness: [
+                    { text: "Due to the fact that we need to think outside the box, we should separate the students who performed a lot better than the others.", expected: ["wordiness"], category: "style" },
+                    { text: "In order to achieve better results, we need to accommodate their needs more effectively.", expected: ["wordiness"], category: "style" },
+                    { text: "The implementation of the aforementioned methodology necessitates the utilization of sophisticated computational algorithms.", expected: ["wordiness", "complexity"], category: "style" }
+                ],
+                passiveVoice: [
+                    { text: "The report was written by John and was reviewed by the committee.", expected: ["passive voice"], category: "style" },
+                    { text: "The data was analyzed and conclusions were drawn.", expected: ["passive voice"], category: "style" }
+                ]
+            },
+            cleanText: [
+                { text: "The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the alphabet.", expected: [], category: "clean" },
+                { text: "She carefully reviewed the document before submitting it to her supervisor.", expected: [], category: "clean" },
+                { text: "The research findings indicate a significant correlation between exercise and mental health outcomes.", expected: [], category: "clean" },
+                { text: "The API endpoint returns a 404 error when the user_id parameter is null or undefined.", expected: [], category: "clean" }
+            ]
+        };
+
+        // Performance test texts
+        const PERFORMANCE_TEXTS = {
+            short: "The cats is hungry.",
+            medium: "Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam.",
+            long: "Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others. In order to achieve better results, we need to accomodate there needs more effectively. This is a neccessary step that will definitly help improve the situation."
+        };
+
+        // Initialize the Mega Engine
+        async function initializeEngine() {
+            try {
+                console.log('🧪 Initializing Mega Engine for benchmarking...');
+                
+                // Try to import the Multi-Engine Grammar Service
+                const { default: MultiEngineGrammarService } = await import('./src/services/MultiEngineGrammarService.ts');
+                
+                multiEngineService = new MultiEngineGrammarService({
+                    maxConcurrentRequests: 5,
+                    targetProcessingTime: 200,
+                    enableDeduplication: true,
+                    enableCaching: true,
+                    enableFailover: true
+                });
+                
+                // Wait for initialization
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                console.log('✅ Mega Engine initialized successfully');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Failed to initialize Mega Engine:', error);
+                return false;
+            }
+        }
+
+        // Check engine status
+        window.checkEngineStatus = async function() {
+            const container = document.getElementById('engineStatus');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔄 Checking engine status...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const stats = multiEngineService.getStatistics();
+                
+                let statusHTML = '<div class="success">✅ Mega Engine Status Report</div>\n\n';
+                statusHTML += `<div class="stats-grid">`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.totalRequests}</div>
+                    <div class="stat-label">Total Requests</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.successRate)}%</div>
+                    <div class="stat-label">Success Rate</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(stats.global.averageProcessingTime)}ms</div>
+                    <div class="stat-label">Avg Processing Time</div>
+                </div>`;
+                
+                statusHTML += `<div class="stat-card">
+                    <div class="stat-value">${stats.global.cacheHitRate}%</div>
+                    <div class="stat-label">Cache Hit Rate</div>
+                </div>`;
+                
+                statusHTML += `</div>\n\n`;
+                
+                statusHTML += '<strong>🔧 Engine Details:</strong>\n';
+                for (const engine of stats.engines) {
+                    const isLoaded = engine.status === 'loaded' ? '✅' : '❌';
+                    statusHTML += `\n${isLoaded} <strong>${engine.name}</strong>`;
+                    statusHTML += `\n   └─ Status: ${engine.status}`;
+                    statusHTML += `\n   └─ Health: ${engine.health.overallHealth}`;
+                    statusHTML += `\n   └─ Avg Time: ${Math.round(engine.health.averageProcessingTime || 0)}ms`;
+                }
+                
+                container.innerHTML = statusHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Engine status check failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Run full benchmark suite
+        window.runFullBenchmark = async function() {
+            const container = document.getElementById('benchmarkResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🚀 Running full benchmark suite...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const startTime = Date.now();
+                
+                // Run all tests
+                const grammarResults = await testGrammarAccuracyInternal();
+                const spellingResults = await testSpellingAccuracyInternal();
+                const styleResults = await testStyleAccuracyInternal();
+                const falsePositiveResults = await testFalsePositivesInternal();
+                const performanceResults = await testPerformanceInternal();
+                
+                const totalTime = Date.now() - startTime;
+                
+                // Calculate overall metrics
+                const totalDetected = grammarResults.detected + spellingResults.detected + styleResults.detected;
+                const totalFalsePositives = grammarResults.falsePositives + spellingResults.falsePositives + styleResults.falsePositives + falsePositiveResults.falsePositives;
+                const totalExpected = grammarResults.total + spellingResults.total + styleResults.total;
+                
+                const precision = totalDetected + totalFalsePositives > 0 ? totalDetected / (totalDetected + totalFalsePositives) : 0;
+                const recall = totalExpected > 0 ? totalDetected / totalExpected : 0;
+                const f1Score = precision + recall > 0 ? 2 * (precision * recall) / (precision + recall) : 0;
+                
+                let resultHTML = '<div class="success">📊 Full Benchmark Results</div>\n\n';
+                
+                // Overall metrics
+                resultHTML += '<strong>📈 OVERALL METRICS:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">F1 Score:</span>
+                    <span class="metric-value">${(f1Score * 100).toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Precision:</span>
+                    <span class="metric-value">${(precision * 100).toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Recall:</span>
+                    <span class="metric-value">${(recall * 100).toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positive Rate:</span>
+                    <span class="metric-value">${falsePositiveResults.rate.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Execution Time:</span>
+                    <span class="metric-value">${totalTime}ms</span>
+                </div>`;
+                
+                // Category breakdown
+                resultHTML += '\n<strong>📚 CATEGORY BREAKDOWN:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Grammar Accuracy:</span>
+                    <span class="metric-value">${grammarResults.accuracy.toFixed(1)}% (${grammarResults.detected}/${grammarResults.total})</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Spelling Accuracy:</span>
+                    <span class="metric-value">${spellingResults.accuracy.toFixed(1)}% (${spellingResults.detected}/${spellingResults.total})</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Style Accuracy:</span>
+                    <span class="metric-value">${styleResults.accuracy.toFixed(1)}% (${styleResults.detected}/${styleResults.total})</span>
+                </div>`;
+                
+                // Performance metrics
+                resultHTML += '\n<strong>⚡ PERFORMANCE METRICS:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Short Text:</span>
+                    <span class="metric-value">${performanceResults.short.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Medium Text:</span>
+                    <span class="metric-value">${performanceResults.medium.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Long Text:</span>
+                    <span class="metric-value">${performanceResults.long.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Cache Efficiency:</span>
+                    <span class="metric-value">${performanceResults.cacheEfficiency.cacheEfficiency.toFixed(1)}%</span>
+                </div>`;
+                
+                // Store results for comparison
+                benchmarkResults = {
+                    f1Score: f1Score * 100,
+                    precision: precision * 100,
+                    recall: recall * 100,
+                    falsePositiveRate: falsePositiveResults.rate,
+                    grammar: grammarResults,
+                    spelling: spellingResults,
+                    style: styleResults,
+                    performance: performanceResults,
+                    totalTime
+                };
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Full benchmark failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test grammar accuracy
+        async function testGrammarAccuracyInternal() {
+            const results = { total: 0, detected: 0, accuracy: 0, falsePositives: 0, details: [] };
+            
+            const categories = ['subjectVerbAgreement', 'pronounCase', 'verbTense', 'articles'];
+            
+            for (const category of categories) {
+                const testCases = TEST_CASES.grammar[category];
+                
+                for (const testCase of testCases) {
+                    results.total++;
+                    
+                    try {
+                        const engineResult = await multiEngineService.checkText(testCase.text);
+                        
+                        // Check if expected issues were detected
+                        const expectedDetected = testCase.expected.some(expected => 
+                            engineResult.issues.some(issue => 
+                                issue.message.toLowerCase().includes(expected.toLowerCase()) ||
+                                issue.category === testCase.category
+                            )
+                        );
+                        
+                        if (expectedDetected) {
+                            results.detected++;
+                        }
+                        
+                        // Check for false positives
+                        const falsePositives = engineResult.issues.filter(issue => 
+                            !testCase.expected.some(expected => 
+                                issue.message.toLowerCase().includes(expected.toLowerCase())
+                            )
+                        );
+                        
+                        results.falsePositives += falsePositives.length;
+                        
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: engineResult.issues.map(i => i.message),
+                            correct: expectedDetected,
+                            falsePositives: falsePositives.length,
+                            category: testCase.category
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error testing grammar case:', error);
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: [],
+                            correct: false,
+                            error: error.message
+                        });
+                    }
+                }
+            }
+            
+            results.accuracy = results.total > 0 ? (results.detected / results.total) * 100 : 0;
+            return results;
+        }
+
+        // Test spelling accuracy
+        async function testSpellingAccuracyInternal() {
+            const results = { total: 0, detected: 0, accuracy: 0, falsePositives: 0, details: [] };
+            
+            const categories = ['commonMisspellings', 'homophones'];
+            
+            for (const category of categories) {
+                const testCases = TEST_CASES.spelling[category];
+                
+                for (const testCase of testCases) {
+                    results.total++;
+                    
+                    try {
+                        const engineResult = await multiEngineService.checkText(testCase.text);
+                        
+                        const expectedDetected = testCase.expected.some(expected => 
+                            engineResult.issues.some(issue => 
+                                issue.message.toLowerCase().includes(expected.toLowerCase()) ||
+                                issue.category === 'spelling'
+                            )
+                        );
+                        
+                        if (expectedDetected) {
+                            results.detected++;
+                        }
+                        
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: engineResult.issues.map(i => i.message),
+                            correct: expectedDetected
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error testing spelling case:', error);
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: [],
+                            correct: false,
+                            error: error.message
+                        });
+                    }
+                }
+            }
+            
+            results.accuracy = results.total > 0 ? (results.detected / results.total) * 100 : 0;
+            return results;
+        }
+
+        // Test style accuracy
+        async function testStyleAccuracyInternal() {
+            const results = { total: 0, detected: 0, accuracy: 0, falsePositives: 0, details: [] };
+            
+            const categories = ['wordiness', 'passiveVoice'];
+            
+            for (const category of categories) {
+                const testCases = TEST_CASES.style[category];
+                
+                for (const testCase of testCases) {
+                    results.total++;
+                    
+                    try {
+                        const engineResult = await multiEngineService.checkText(testCase.text);
+                        
+                        const expectedDetected = testCase.expected.some(expected => 
+                            engineResult.issues.some(issue => 
+                                issue.message.toLowerCase().includes(expected.toLowerCase()) ||
+                                issue.category === 'style'
+                            )
+                        );
+                        
+                        if (expectedDetected) {
+                            results.detected++;
+                        }
+                        
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: engineResult.issues.map(i => i.message),
+                            correct: expectedDetected
+                        });
+                        
+                    } catch (error) {
+                        console.error('Error testing style case:', error);
+                        results.details.push({
+                            text: testCase.text,
+                            expected: testCase.expected,
+                            detected: [],
+                            correct: false,
+                            error: error.message
+                        });
+                    }
+                }
+            }
+            
+            results.accuracy = results.total > 0 ? (results.detected / results.total) * 100 : 0;
+            return results;
+        }
+
+        // Test false positives
+        async function testFalsePositivesInternal() {
+            const results = { total: 0, falsePositives: 0, rate: 0, details: [] };
+            
+            for (const testCase of TEST_CASES.cleanText) {
+                results.total++;
+                
+                try {
+                    const engineResult = await multiEngineService.checkText(testCase.text);
+                    
+                    if (engineResult.issues.length > 0) {
+                        results.falsePositives += engineResult.issues.length;
+                    }
+                    
+                    results.details.push({
+                        text: testCase.text,
+                        detected: engineResult.issues.map(i => i.message),
+                        falsePositiveCount: engineResult.issues.length
+                    });
+                    
+                } catch (error) {
+                    console.error('Error testing false positive case:', error);
+                    results.details.push({
+                        text: testCase.text,
+                        detected: [],
+                        falsePositiveCount: 0,
+                        error: error.message
+                    });
+                }
+            }
+            
+            results.rate = results.total > 0 ? (results.falsePositives / results.total) * 100 : 0;
+            return results;
+        }
+
+        // Test performance
+        async function testPerformanceInternal() {
+            const results = { short: {}, medium: {}, long: {}, cacheEfficiency: {} };
+            
+            // Test different text lengths
+            results.short = await testTextPerformance(PERFORMANCE_TEXTS.short);
+            results.medium = await testTextPerformance(PERFORMANCE_TEXTS.medium);
+            results.long = await testTextPerformance(PERFORMANCE_TEXTS.long);
+            
+            // Test cache efficiency
+            results.cacheEfficiency = await testCacheEfficiency();
+            
+            return results;
+        }
+
+        async function testTextPerformance(text) {
+            const iterations = 5;
+            const times = [];
+            
+            for (let i = 0; i < iterations; i++) {
+                const startTime = Date.now();
+                try {
+                    await multiEngineService.checkText(text);
+                } catch (error) {
+                    console.error('Performance test error:', error);
+                }
+                const endTime = Date.now();
+                times.push(endTime - startTime);
+            }
+            
+            const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
+            const minTime = Math.min(...times);
+            const maxTime = Math.max(...times);
+            
+            return {
+                textLength: text.length,
+                wordCount: text.split(/\s+/).length,
+                averageTime: avgTime,
+                minTime,
+                maxTime,
+                times
+            };
+        }
+
+        async function testCacheEfficiency() {
+            const testText = "The cats is hungry.";
+            const iterations = 5;
+            
+            // First run (cache miss)
+            const firstStart = Date.now();
+            try {
+                await multiEngineService.checkText(testText);
+            } catch (error) {
+                console.error('Cache test error:', error);
+            }
+            const firstTime = Date.now() - firstStart;
+            
+            // Subsequent runs (cache hits)
+            const cacheTimes = [];
+            for (let i = 0; i < iterations; i++) {
+                const start = Date.now();
+                try {
+                    await multiEngineService.checkText(testText);
+                } catch (error) {
+                    console.error('Cache test error:', error);
+                }
+                cacheTimes.push(Date.now() - start);
+            }
+            
+            const avgCacheTime = cacheTimes.reduce((a, b) => a + b, 0) / cacheTimes.length;
+            const cacheEfficiency = firstTime > 0 ? ((firstTime - avgCacheTime) / firstTime) * 100 : 0;
+            
+            return {
+                firstRunTime: firstTime,
+                avgCacheTime,
+                cacheEfficiency,
+                cacheTimes
+            };
+        }
+
+        // Individual test functions for UI
+        window.testGrammarAccuracy = async function() {
+            const container = document.getElementById('grammarResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📚 Testing grammar accuracy...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const results = await testGrammarAccuracyInternal();
+                
+                let resultHTML = '<div class="success">📚 Grammar Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Grammar accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        window.testSpellingAccuracy = async function() {
+            const container = document.getElementById('spellingResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔤 Testing spelling accuracy...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const results = await testSpellingAccuracyInternal();
+                
+                let resultHTML = '<div class="success">🔤 Spelling Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Spelling accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        window.testStyleAccuracy = async function() {
+            const container = document.getElementById('styleResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>✨ Testing style accuracy...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const results = await testStyleAccuracyInternal();
+                
+                let resultHTML = '<div class="success">✨ Style Accuracy Results</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Overall Accuracy:</span>
+                    <span class="metric-value">${results.accuracy.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Tests:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Correctly Detected:</span>
+                    <span class="metric-value">${results.detected}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Style accuracy test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        window.testPerformance = async function() {
+            const container = document.getElementById('performanceResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>⚡ Testing performance...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const results = await testPerformanceInternal();
+                
+                let resultHTML = '<div class="success">⚡ Performance Results</div>\n\n';
+                
+                resultHTML += '<strong>📝 Text Processing Performance:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Short Text:</span>
+                    <span class="metric-value">${results.short.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Medium Text:</span>
+                    <span class="metric-value">${results.medium.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Long Text:</span>
+                    <span class="metric-value">${results.long.averageTime.toFixed(1)}ms</span>
+                </div>`;
+                
+                resultHTML += '\n<strong>💾 Cache Performance:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Cache Efficiency:</span>
+                    <span class="metric-value">${results.cacheEfficiency.cacheEfficiency.toFixed(1)}%</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">First Run Time:</span>
+                    <span class="metric-value">${results.cacheEfficiency.firstRunTime.toFixed(1)}ms</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Cached Run Time:</span>
+                    <span class="metric-value">${results.cacheEfficiency.avgCacheTime.toFixed(1)}ms</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Performance test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        window.testFalsePositives = async function() {
+            const container = document.getElementById('falsePositiveResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>✅ Testing false positive rate...</div>';
+            
+            try {
+                if (!multiEngineService) {
+                    const initialized = await initializeEngine();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Mega Engine');
+                    }
+                }
+                
+                const results = await testFalsePositivesInternal();
+                
+                let resultHTML = '<div class="success">✅ False Positive Analysis</div>\n\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Total Clean Texts:</span>
+                    <span class="metric-value">${results.total}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positives Found:</span>
+                    <span class="metric-value">${results.falsePositives}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positive Rate:</span>
+                    <span class="metric-value">${results.rate.toFixed(1)}%</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ False positive test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        window.compareBaselines = async function() {
+            const container = document.getElementById('comparisonResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📈 Comparing with baselines...</div>';
+            
+            try {
+                if (!benchmarkResults) {
+                    throw new Error('Please run the full benchmark first');
+                }
+                
+                // Define previous baseline (estimated from our conversation)
+                const previousBaseline = {
+                    grammar: { accuracy: 75, precision: 70, recall: 80 },
+                    spelling: { accuracy: 85, precision: 90, recall: 80 },
+                    style: { accuracy: 65, precision: 60, recall: 70 },
+                    performance: { avgTime: 250, maxTime: 500 },
+                    falsePositiveRate: 12
+                };
+                
+                let resultHTML = '<div class="success">📈 Baseline Comparison Results</div>\n\n';
+                
+                // Compare current vs previous
+                resultHTML += '<strong>📊 Accuracy Comparison:</strong>\n';
+                
+                // Grammar comparison
+                const grammarChange = benchmarkResults.grammar.accuracy - previousBaseline.grammar.accuracy;
+                const grammarStatus = grammarChange > 0 ? 'improvement' : grammarChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Grammar Accuracy:</span>
+                    <span class="metric-value">${benchmarkResults.grammar.accuracy.toFixed(1)}%</span>
+                    <span class="${grammarStatus}">(${grammarChange > 0 ? '+' : ''}${grammarChange.toFixed(1)}%)</span>
+                </div>`;
+                
+                // Performance comparison
+                const perfChange = previousBaseline.performance.avgTime - benchmarkResults.performance.medium.averageTime;
+                const perfStatus = perfChange > 0 ? 'improvement' : perfChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Avg Processing Time:</span>
+                    <span class="metric-value">${benchmarkResults.performance.medium.averageTime.toFixed(1)}ms</span>
+                    <span class="${perfStatus}">(${perfChange > 0 ? '+' : ''}${perfChange.toFixed(1)}ms faster)</span>
+                </div>`;
+                
+                // False positive comparison
+                const fpChange = previousBaseline.falsePositiveRate - benchmarkResults.falsePositiveRate;
+                const fpStatus = fpChange > 0 ? 'improvement' : fpChange < 0 ? 'regression' : 'stable';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">False Positive Rate:</span>
+                    <span class="metric-value">${benchmarkResults.falsePositiveRate.toFixed(1)}%</span>
+                    <span class="${fpStatus}">(${fpChange > 0 ? '+' : ''}${fpChange.toFixed(1)}% improvement)</span>
+                </div>`;
+                
+                resultHTML += '\n<strong>🎯 Industry Standards Comparison:</strong>\n';
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target Grammar Accuracy:</span>
+                    <span class="metric-value">90%</span>
+                    <span class="${benchmarkResults.grammar.accuracy >= 90 ? 'improvement' : 'regression'}">${benchmarkResults.grammar.accuracy >= 90 ? '✅ Met' : '❌ Below Target'}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target Processing Time:</span>
+                    <span class="metric-value">200ms</span>
+                    <span class="${benchmarkResults.performance.medium.averageTime <= 200 ? 'improvement' : 'regression'}">${benchmarkResults.performance.medium.averageTime <= 200 ? '✅ Met' : '❌ Above Target'}</span>
+                </div>`;
+                resultHTML += `<div class="metric-row">
+                    <span class="metric-label">Target False Positive Rate:</span>
+                    <span class="metric-value">5%</span>
+                    <span class="${benchmarkResults.falsePositiveRate <= 5 ? 'improvement' : 'regression'}">${benchmarkResults.falsePositiveRate <= 5 ? '✅ Met' : '❌ Above Target'}</span>
+                </div>`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Baseline comparison failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Initialize system on page load
+        window.addEventListener('load', async () => {
+            console.log('🧪 Page loaded, ready to run benchmarks...');
+        });
+    </script>
+</body>
+</html> 
