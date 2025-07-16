@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test-grammar": "vite --port 3000 --open test-world-class-grammar-system.html",
+    "test-phase2": "vite --port 3000 --open test-world-class-grammar-system.html"
   },
   "dependencies": {
     "@2toad/profanity": "^3.1.1",

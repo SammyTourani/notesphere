@@ -1,149 +1,76 @@
 /**
- * @notesphere/mega-engine
- * 100% free, offline, production-ready grammar, spelling, and style checking engine
+ * Mega Engine - The Ultimate Grammar Checking System
+ * PHASE 1: Main entry point with reliable WASM loading, health monitoring, and structured logging
+ * 
+ * This is the main export file for the Mega Engine package.
+ * It provides a clean API for grammar checking with multiple engines.
  */
 
-import { MegaEngine } from './mega-engine.js';
+// PHASE 1: Export new reliable components
+export { ReliableWasmLoader } from './reliable-wasm-loader.js';
+export { Logger } from './logger.js';
+export { EngineHealthMonitor } from './engine-health-monitor.js';
+export { StreamingAssetLoader } from './streaming-asset-loader.js';
 
-// Create default instance
-const megaEngine = new MegaEngine();
+// Main engine exports
+export { MegaEngine, getMegaEngine } from './mega-engine.js';
+export { NlpruleRealEngine } from './mega-engine-nlprule.js';
 
-// Re-export types
-export type {
-  Issue,
-  CheckOptions,
-  CheckResult,
-  InitOptions,
-  EngineStatus,
-  IssueCategory,
-  IssueSeverity,
-  SpellCheckResult,
-  StyleAnalysis,
-  WasmEngineStatus,
-  CacheEntry,
-  CacheStats
-} from './types.js';
-
-// Re-export engine classes for advanced usage
-export { MegaEngine } from './mega-engine.js';
-export { ProfessionalHunspellChecker as SpellChecker } from './spell-checker-nspell.js';
+// Engine components
+export { ProfessionalHunspellChecker } from './spell-checker-nspell.js';
 export { StyleChecker } from './style-checker.js';
+
+// Utility components
 export { SmartCache } from './cache.js';
 
-/**
- * Initialize the mega grammar engine
- * 
- * @param options - Initialization options
- * @returns Promise that resolves to true if successful
- * 
- * @example
- * ```typescript
- * // Basic initialization
- * await init();
- * 
- * // Custom initialization
- * await init({
- *   engines: {
- *     nlprule: true,
- *     hunspell: true,
- *     writeGood: false
- *   },
- *   debug: true
- * });
- * ```
- */
-export async function init(options?: import('./types.js').InitOptions): Promise<boolean> {
-  return megaEngine.init(options);
+// PHASE 1: Export all types
+export type {
+  Issue,
+  IssueCategory,
+  CheckOptions,
+  CheckResult,
+  CheckStatistics,
+  InitOptions,
+  EngineStatus,
+  StyleAnalysis,
+  StyleSuggestion,
+  // PHASE 1: New types
+  WasmLoadStatus,
+  EngineHealth,
+  HealthReport,
+  CacheStats,
+  AssetCacheStats,
+  SystemHealthStatus,
+  LogLevel,
+  LogEntry,
+  AssetLoadOptions,
+  AssetLoadResult,
+  WasmLoadOptions,
+  WasmLoadResult
+} from './types.js';
+
+// PHASE 1: Convenience function for quick initialization
+export async function createMegaEngine(options: import('./types.js').InitOptions = {}): Promise<import('./mega-engine.js').MegaEngine> {
+  const { getMegaEngine } = await import('./mega-engine.js');
+  const engine = getMegaEngine();
+  await engine.init(options);
+  return engine;
 }
 
-/**
- * Check text for grammar, spelling, and style issues
- * 
- * @param text - The text to check
- * @param options - Check options
- * @returns Promise with check results
- * 
- * @example
- * ```typescript
- * // Basic check
- * const result = await check("This are a test.");
- * console.log(result.issues); // Array of issues found
- * 
- * // Check specific categories
- * const result = await check("Hello world", {
- *   categories: ['spelling', 'grammar']
- * });
- * 
- * // Check with custom language
- * const result = await check("Hello world", {
- *   language: 'en-GB'
- * });
- * ```
- */
-export async function check(text: string, options?: import('./types.js').CheckOptions): Promise<import('./types.js').CheckResult> {
-  return megaEngine.check(text, options);
+// PHASE 1: Quick check function for simple use cases
+export async function quickCheck(text: string, options: import('./types.js').CheckOptions = {}): Promise<import('./types.js').CheckResult> {
+  const { getMegaEngine } = await import('./mega-engine.js');
+  const engine = getMegaEngine();
+  await engine.init();
+  return await engine.check(text, options);
 }
 
-/**
- * Get the current status of the engine
- * 
- * @returns Engine status information
- */
-export function getStatus(): import('./types.js').EngineStatus {
-  return {
-    isInitialized: true,
-    isReady: true,
-    capabilities: ['grammar', 'spelling', 'style'],
-    languages: ['en-US', 'en'],
-    stats: {
-      totalChecks: 0,
-      averageTime: 0,
-      cacheHitRate: 0
-    }
-  };
+// PHASE 1: Health check function
+export function getSystemHealth(): import('./types.js').SystemHealthStatus {
+  const { getMegaEngine } = require('./mega-engine.js');
+  const engine = getMegaEngine();
+  return engine.getSystemHealthStatus();
 }
 
-/**
- * Get detailed engine information including statistics
- * 
- * @returns Detailed engine information
- */
-export function getInfo() {
-  return {
-    status: getStatus(),
-    stats: megaEngine.getStats(),
-    version: '1.0.0',
-    build: 'production'
-  };
-}
-
-/**
- * Reset all statistics and clear caches
- */
-export function reset(): void {
-  megaEngine.clearCache();
-}
-
-/**
- * Dispose of all resources and clean up
- */
-export function dispose(): void {
-  megaEngine.clearCache();
-}
-
-// Export the default instance for direct use
-export { megaEngine as engine };
-
-// Default export for convenience
-export default {
-  init,
-  check,
-  getStatus,
-  getInfo,
-  reset,
-  dispose,
-  engine: megaEngine,
-  MegaEngine
-}
-
-// Simple API will be added once grammar integration is complete
+// PHASE 1: Default export for backward compatibility
+export { MegaEngine as default } from './mega-engine.js';

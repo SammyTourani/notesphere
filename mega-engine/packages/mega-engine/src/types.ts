@@ -1,137 +1,67 @@
 /**
- * Core types for the Mega Grammar Engine
+ * Type definitions for the Mega Engine system
+ * PHASE 1: Enhanced types for reliable WASM loading, health monitoring, and structured logging
  */
 
-export type IssueCategory = 
-  | 'spelling' 
-  | 'grammar' 
-  | 'style' 
-  | 'punctuation' 
-  | 'clarity' 
-  | 'inclusivity'
-  | 'readability'
-  | 'other';
-
-export type IssueSeverity = 'error' | 'warning' | 'info';
-
 export interface Issue {
-  /** Unique identifier for this issue */
   id: string;
-  
-  /** Human-readable message describing the issue */
-  message: string;
-  
-  /** Short version of the message */
-  shortMessage?: string;
-  
-  /** Start position in the text (0-based) */
-  offset: number;
-  
-  /** Length of the problematic text */
-  length: number;
-  
-  /** Category of the issue */
   category: IssueCategory;
-  
-  /** Severity level */
-  severity: IssueSeverity;
-  
-  /** Priority for sorting (1 = highest) */
+  severity: 'error' | 'warning' | 'info';
   priority: number;
-  
-  /** Suggested replacements */
-  suggestions: string[];
-  
-  /** Rule that triggered this issue */
-  rule: {
+  message: string;
+  shortMessage: string;
+  offset: number;
+  length: number;
+  suggestions?: string[];
+  rule?: {
     id: string;
     description: string;
-    category?: string;
   };
-  
-  /** Context around the issue */
-  context: {
+  context?: {
     text: string;
     offset: number;
     length: number;
   };
-  
-  /** Engine that detected this issue */
-  source: string;
+  confidence?: number;
+  source?: string;
+  sourceEngines?: string[]; // PHASE 1: Track which engines found this issue
 }
 
+export type IssueCategory = 'grammar' | 'spelling' | 'style' | 'clarity' | 'inclusivity';
+
 export interface CheckOptions {
-  /** Language code (default: 'en-US') */
-  language?: string;
-  
-  /** Categories to check (default: all) */
   categories?: IssueCategory[];
-  
-  /** Enable caching (default: true) */
-  enableCache?: boolean;
-  
-  /** Maximum processing time in ms (default: 30000) */
-  timeout?: number;
-  
-  /** Enable debug logging (default: false) */
-  debug?: boolean;
+  confidence?: number;
+  maxIssues?: number;
+  includeSuggestions?: boolean;
+  includeContext?: boolean;
 }
 
 export interface CheckResult {
-  /** Array of detected issues */
   issues: Issue[];
-  
-  /** Processing statistics */
-  statistics: {
-    /** Engine used for checking */
-    engine: string;
-    
-    /** Processing time in milliseconds */
-    processingTime: number;
-    
-    /** Length of text checked */
-    textLength: number;
-    
-    /** Number of words checked */
-    wordsChecked: number;
-    
-    /** Number of issues found */
-    issuesFound: number;
-    
-    /** Whether results came from cache */
-    fromCache?: boolean;
-    
-    /** Whether fallback engine was used */
-    fallbackUsed?: boolean;
-  };
+  statistics: CheckStatistics;
 }
 
-export interface EngineStatus {
-  /** Whether engine is initialized */
-  isInitialized: boolean;
-  
-  /** Whether engine is ready to use */
-  isReady: boolean;
-  
-  /** Engine capabilities */
-  capabilities: IssueCategory[];
-  
-  /** Supported languages */
-  languages: string[];
-  
-  /** Performance statistics */
-  stats: {
-    totalChecks: number;
-    averageTime: number;
-    cacheHitRate: number;
-  };
+export interface CheckStatistics {
+  engine: string;
+  processingTime: number;
+  textLength: number;
+  wordsChecked: number;
+  issuesFound: number;
+  fromCache?: boolean;
+  fallbackUsed?: boolean;
+  // PHASE 1: Enhanced statistics
+  enginesUsed?: number;
+  engineContributions?: Record<string, number>;
+  engineLatencies?: Record<string, number>;
+  rawIssuesFound?: number;
+  deduplicationEfficiency?: number;
+  qualityScore?: number;
+  breakdown?: Record<string, number>;
 }
 
 export interface InitOptions {
-  /** Base path for assets (default: './public') */
   assetsPath?: string;
-  
-  /** Enable specific engines */
   engines?: {
     nlprule?: boolean;
     hunspell?: boolean;
@@ -139,54 +69,160 @@ export interface InitOptions {
     writeGood?: boolean;
     retext?: boolean;
   };
-  
-  /** Custom dictionary files */
-  customDictionaries?: string[];
-  
-  /** Enable debug logging */
   debug?: boolean;
+  cacheSize?: number;
+  timeout?: number;
 }
 
-// Engine-specific types
-export interface WasmEngineStatus {
-  isLoaded: boolean;
-  isLoading: boolean;
-  hasChecker: boolean;
-  wasmSize?: number;
+export interface EngineStatus {
+  isInitialized: boolean;
+  // PHASE 1: Enhanced engine status with health monitoring
+  engines?: Record<string, {
+    name: string;
+    status: 'active' | 'inactive' | 'loading' | 'failed';
+    health?: EngineHealth;
+  }>;
+  health?: 'healthy' | 'degraded' | 'critical';
 }
 
-export interface SpellCheckResult {
-  word: string;
-  isCorrect: boolean;
-  suggestions: string[];
+export interface StyleAnalysis {
+  readabilityScore: number;
+  suggestions: StyleSuggestion[];
+}
+
+export interface StyleSuggestion {
+  type: 'clarity' | 'simplify' | 'style';
+  message: string;
   position: {
     start: number;
     end: number;
   };
 }
 
-export interface StyleAnalysis {
-  readabilityScore: number;
-  suggestions: {
-    type: 'simplify' | 'clarity' | 'inclusivity' | 'readability';
-    message: string;
-    position: {
-      start: number;
-      end: number;
-    };
-  }[];
+// PHASE 1: New types for reliable WASM loading and health monitoring
+
+export interface WasmLoadStatus {
+  isLoaded: boolean;
+  isLoading: boolean;
+  loadAttempts: number;
+  lastLoadTime: number;
+  hasChecker: boolean;
+  error?: string;
 }
 
-// Cache types
-export interface CacheEntry<T> {
-  data: T;
+export interface EngineHealth {
+  successCount: number;
+  failureCount: number;
+  lastSuccess?: number;
+  lastFailure?: number;
+  lastError?: string;
+  averageResponseTime?: number;
+  status: 'healthy' | 'degraded' | 'critical';
+}
+
+export interface HealthReport {
+  overall: 'healthy' | 'degraded' | 'critical';
+  engines: Map<string, EngineHealth>;
+  criticalIssues: string[];
+  recommendations: string[];
   timestamp: number;
-  hits: number;
 }
 
 export interface CacheStats {
   size: number;
-  maxSize: number;
+  hits: number;
+  misses: number;
   hitRate: number;
   memoryUsage?: number;
+}
+
+export interface AssetCacheStats {
+  memoryCache: CacheStats;
+  persistentCache: CacheStats;
+  totalAssets: number;
+  totalSize: number;
+}
+
+export interface SystemHealthStatus {
+  engines: {
+    nlprule: {
+      status: 'loaded' | 'loading' | 'failed' | 'not-loaded';
+      loadAttempts?: number;
+      lastLoadTime?: number;
+      hasChecker?: boolean;
+      health?: EngineHealth;
+      wasmStatus?: WasmLoadStatus;
+    };
+    hunspell: {
+      status: 'loaded' | 'failed' | 'not-loaded';
+      health?: EngineHealth;
+    };
+    styleChecker: {
+      status: 'loaded' | 'failed' | 'not-loaded';
+      health?: EngineHealth;
+    };
+  };
+  health: {
+    overall: 'healthy' | 'degraded' | 'critical';
+    criticalIssues: string[];
+    recommendations: string[];
+  };
+  cache: {
+    grammarCache: CacheStats;
+    assetCache: AssetCacheStats;
+  };
+  wasm: {
+    loadAttempts: number;
+    lastLoadTime: number;
+    status?: WasmLoadStatus;
+  };
+  stats: {
+    totalChecks: number;
+    averageTime: number;
+    engineUsage: Record<string, number>;
+  };
+  timestamp: number;
+}
+
+// PHASE 1: Logger types
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+export interface LogEntry {
+  timestamp: number;
+  level: LogLevel;
+  component: string;
+  message: string;
+  data?: any;
+  error?: Error;
+}
+
+// PHASE 1: Asset loading types
+export interface AssetLoadOptions {
+  timeout?: number;
+  retries?: number;
+  useCache?: boolean;
+  streaming?: boolean;
+}
+
+export interface AssetLoadResult {
+  data: any;
+  size: number;
+  loadTime: number;
+  fromCache: boolean;
+  url: string;
+}
+
+// PHASE 1: WASM loader types
+export interface WasmLoadOptions {
+  timeout?: number;
+  retries?: number;
+  fallbackStrategies?: string[];
+  validateChecksum?: boolean;
+}
+
+export interface WasmLoadResult {
+  module: any;
+  loadTime: number;
+  strategy: string;
+  checksum?: string;
 }

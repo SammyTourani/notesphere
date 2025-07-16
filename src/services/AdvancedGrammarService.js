@@ -4,6 +4,8 @@
  * Uses actual nlprule WASM, Hunspell, SymSpell, write-good, and retext engines
  */
 
+import suggestionIntelligenceService from './SuggestionIntelligenceService.js';
+
 // Mega-engine will be loaded dynamically
 let megaEngine = null;
 
@@ -145,10 +147,16 @@ class AdvancedGrammarService {
           priority: issue.priority || 5,
           confidence: this._calculateConfidence(issue)
         }));
+
+        // 🧠 PHASE 1: Enhance issues with suggestion intelligence
+        transformedIssues = this._enhanceIssuesWithIntelligence(transformedIssues);
       } else {
         // Fallback: basic analysis
         console.log('⚠️ Using fallback grammar analysis');
         transformedIssues = this._fallbackAnalysis(text);
+        
+        // 🧠 PHASE 1: Enhance fallback issues with intelligence too
+        transformedIssues = this._enhanceIssuesWithIntelligence(transformedIssues);
       }
 
       const processingTime = Date.now() - startTime;
@@ -384,6 +392,135 @@ class AdvancedGrammarService {
         message: 'Fallback mode - limited functionality'
       }
     };
+  }
+
+  /**
+   * 🧠 PHASE 1: Enhance issues with suggestion intelligence
+   * Analyzes each issue and its suggestions to add smart classification metadata
+   */
+  _enhanceIssuesWithIntelligence(issues) {
+    try {
+      console.log('🧠 Enhancing', issues.length, 'issues with suggestion intelligence...');
+      
+      const enhancedIssues = issues.map(issue => {
+        try {
+          // Convert to format expected by our system (ensure we have the right properties)
+          const normalizedIssue = {
+            ...issue,
+            category: issue.type || issue.category || 'grammar',
+            offset: issue.startIndex || issue.offset,
+            length: (issue.endIndex || issue.endIndex === 0) ? 
+                   (issue.endIndex - (issue.startIndex || issue.offset || 0)) : 
+                   (issue.length || issue.originalText?.length || 1),
+            text: issue.originalText || issue.text,
+            originalText: issue.originalText || issue.text
+          };
+          
+          // Analyze each suggestion with the intelligence service
+          let intelligenceMetadata = null;
+          let bestSuggestionAnalysis = null;
+          
+          if (normalizedIssue.suggestions && normalizedIssue.suggestions.length > 0) {
+            // Analyze the first (best) suggestion
+            const primarySuggestion = normalizedIssue.suggestions[0];
+            bestSuggestionAnalysis = suggestionIntelligenceService.classifySuggestion(
+              normalizedIssue, 
+              primarySuggestion
+            );
+            
+            intelligenceMetadata = {
+              classification: bestSuggestionAnalysis.category,
+              confidence: bestSuggestionAnalysis.confidence,
+              safetyScore: bestSuggestionAnalysis.safetyScore,
+              complexityScore: bestSuggestionAnalysis.complexityScore,
+              reasoning: bestSuggestionAnalysis.reasoning,
+              hasAnalysis: true,
+              analysisMetadata: bestSuggestionAnalysis.metadata
+            };
+          } else {
+            // No suggestions available - mark as manual-only
+            intelligenceMetadata = {
+              classification: 'manual-only',
+              confidence: 0.3,
+              safetyScore: 0.3,
+              complexityScore: 0.8,
+              reasoning: 'No suggestions available',
+              hasAnalysis: false,
+              analysisMetadata: { noSuggestions: true }
+            };
+          }
+          
+          // Add intelligence metadata to issue
+          const enhancedIssue = {
+            ...normalizedIssue,
+            // Legacy auto-fix flag for backward compatibility
+            isAutoFixable: intelligenceMetadata.classification === 'auto-fixable',
+            autoFixable: intelligenceMetadata.classification === 'auto-fixable',
+            
+            // New intelligence metadata
+            intelligence: intelligenceMetadata,
+            
+            // Enhanced suggestion metadata
+            enhancedSuggestions: normalizedIssue.suggestions?.map((suggestion, index) => ({
+              text: typeof suggestion === 'string' ? suggestion : suggestion.text || suggestion,
+              isPrimary: index === 0,
+              analysis: index === 0 ? bestSuggestionAnalysis : null
+            })) || []
+          };
+          
+          return enhancedIssue;
+          
+        } catch (error) {
+          console.warn('⚠️ Failed to enhance issue with intelligence:', error);
+          // Return issue with safe fallback
+          return {
+            ...issue,
+            isAutoFixable: false,
+            autoFixable: false,
+            intelligence: {
+              classification: 'manual-only',
+              confidence: 0.3,
+              safetyScore: 0.3,
+              complexityScore: 0.8,
+              reasoning: 'Intelligence analysis failed',
+              hasAnalysis: false,
+              analysisMetadata: { error: error.message }
+            },
+            enhancedSuggestions: issue.suggestions?.map(s => ({ 
+              text: typeof s === 'string' ? s : s.text || s,
+              isPrimary: false,
+              analysis: null 
+            })) || []
+          };
+        }
+      });
+      
+      // Log enhancement results
+      const stats = enhancedIssues.reduce((acc, issue) => {
+        const classification = issue.intelligence?.classification || 'unknown';
+        acc[classification] = (acc[classification] || 0) + 1;
+        return acc;
+      }, {});
+      
+      console.log('✅ Issue enhancement complete:', stats);
+      
+      return enhancedIssues;
+      
+    } catch (error) {
+      console.error('❌ Failed to enhance issues with intelligence:', error);
+      // Return original issues with safe fallbacks
+      return issues.map(issue => ({
+        ...issue,
+        isAutoFixable: false,
+        autoFixable: false,
+        intelligence: {
+          classification: 'manual-only',
+          confidence: 0.3,
+          reasoning: 'Enhancement system failed',
+          hasAnalysis: false
+        }
+      }));
+    }
   }
 
   /**

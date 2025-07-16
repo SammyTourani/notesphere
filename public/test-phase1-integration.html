@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1 Integration Test - Mega Engine</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 25px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: #f8fafc;
+        }
+        .test-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .success { 
+            background: #f0fff4; 
+            border: 2px solid #68d391; 
+            color: #22543d;
+        }
+        .error { 
+            background: #fed7d7; 
+            border: 2px solid #fc8181; 
+            color: #742a2a;
+        }
+        .warning { 
+            background: #fefcbf; 
+            border: 2px solid #f6e05e; 
+            color: #744210;
+        }
+        .info {
+            background: #ebf8ff;
+            border: 2px solid #63b3ed;
+            color: #2a4365;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #718096;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Phase 1 Integration Test</h1>
+        <p style="text-align: center; color: #718096; font-size: 18px; margin-bottom: 40px;">
+            Testing Mega Engine with Reliable WASM Loading, Health Monitoring, and Structured Logging
+        </p>
+
+        <!-- Component Test -->
+        <div class="test-section">
+            <h2>🔧 Component Initialization Test</h2>
+            <p>Test if all Phase 1 components initialize properly</p>
+            <button onclick="testComponents()">Test Components</button>
+            <div id="componentResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- WASM Loader Test -->
+        <div class="test-section">
+            <h2>📦 Reliable WASM Loader Test</h2>
+            <p>Test the new reliable WASM loading system</p>
+            <button onclick="testWasmLoader()">Test WASM Loader</button>
+            <div id="wasmResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Health Monitor Test -->
+        <div class="test-section">
+            <h2>🏥 Health Monitor Test</h2>
+            <p>Test the engine health monitoring system</p>
+            <button onclick="testHealthMonitor()">Test Health Monitor</button>
+            <div id="healthResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Asset Loader Test -->
+        <div class="test-section">
+            <h2>📁 Streaming Asset Loader Test</h2>
+            <p>Test the streaming asset loading with caching</p>
+            <button onclick="testAssetLoader()">Test Asset Loader</button>
+            <div id="assetResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Full Integration Test -->
+        <div class="test-section">
+            <h2>🎯 Full Integration Test</h2>
+            <p>Test the complete Mega Engine with all Phase 1 components</p>
+            <button onclick="testFullIntegration()">Test Full Integration</button>
+            <div id="integrationResults" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- System Health Test -->
+        <div class="test-section">
+            <h2>📊 System Health Status</h2>
+            <p>View comprehensive system health information</p>
+            <button onclick="viewSystemHealth()">View System Health</button>
+            <div id="systemHealthResults" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        let megaEngine = null;
+
+        // Test component initialization
+        window.testComponents = async function() {
+            const container = document.getElementById('componentResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🔧 Testing component initialization...</div>';
+            
+            try {
+                // Test Logger
+                const { Logger } = await import('../mega-engine/packages/mega-engine/src/logger.js');
+                const logger = new Logger('TestComponent');
+                logger.info('Logger test successful');
+                
+                // Test EngineHealthMonitor
+                const { EngineHealthMonitor } = await import('../mega-engine/packages/mega-engine/src/engine-health-monitor.js');
+                const healthMonitor = EngineHealthMonitor.getInstance();
+                healthMonitor.reportSuccess('test-component');
+                
+                // Test StreamingAssetLoader
+                const { StreamingAssetLoader } = await import('../mega-engine/packages/mega-engine/src/streaming-asset-loader.js');
+                const assetLoader = StreamingAssetLoader.getInstance();
+                
+                // Test ReliableWasmLoader
+                const { ReliableWasmLoader } = await import('../mega-engine/packages/mega-engine/src/reliable-wasm-loader.js');
+                const wasmLoader = ReliableWasmLoader.getInstance();
+                
+                let resultHTML = '<div class="success">✅ All Phase 1 Components Initialized Successfully</div>\n\n';
+                resultHTML += '<div class="stats-grid">';
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">✅</div>
+                    <div class="stat-label">Logger</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">✅</div>
+                    <div class="stat-label">Health Monitor</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">✅</div>
+                    <div class="stat-label">Asset Loader</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">✅</div>
+                    <div class="stat-label">WASM Loader</div>
+                </div>`;
+                resultHTML += '</div>\n\n';
+                
+                resultHTML += '🎯 <strong>Phase 1 Components Status:</strong>\n';
+                resultHTML += '   • Logger: Structured logging with levels and context\n';
+                resultHTML += '   • Health Monitor: Engine health tracking and reporting\n';
+                resultHTML += '   • Asset Loader: Streaming asset loading with caching\n';
+                resultHTML += '   • WASM Loader: Reliable WASM loading with fallbacks\n';
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Component initialization failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test WASM loader
+        window.testWasmLoader = async function() {
+            const container = document.getElementById('wasmResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📦 Testing WASM loader...</div>';
+            
+            try {
+                const { ReliableWasmLoader } = await import('../mega-engine/packages/mega-engine/src/reliable-wasm-loader.js');
+                const wasmLoader = ReliableWasmLoader.getInstance();
+                
+                // Get initial status
+                const initialStatus = wasmLoader.getStatus();
+                
+                let resultHTML = '<div class="success">✅ WASM Loader Test Results</div>\n\n';
+                resultHTML += '<div class="stats-grid">';
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${initialStatus.loadAttempts}</div>
+                    <div class="stat-label">Load Attempts</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${initialStatus.isLoaded ? '✅' : '❌'}</div>
+                    <div class="stat-label">Loaded</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${initialStatus.isLoading ? '🔄' : '⏸️'}</div>
+                    <div class="stat-label">Loading</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${initialStatus.hasChecker ? '✅' : '❌'}</div>
+                    <div class="stat-label">Has Checker</div>
+                </div>`;
+                resultHTML += '</div>\n\n';
+                
+                resultHTML += '📊 <strong>WASM Loader Status:</strong>\n';
+                resultHTML += `   • Load Attempts: ${initialStatus.loadAttempts}\n`;
+                resultHTML += `   • Is Loaded: ${initialStatus.isLoaded}\n`;
+                resultHTML += `   • Is Loading: ${initialStatus.isLoading}\n`;
+                resultHTML += `   • Has Checker: ${initialStatus.hasChecker}\n`;
+                if (initialStatus.lastLoadTime) {
+                    resultHTML += `   • Last Load Time: ${new Date(initialStatus.lastLoadTime).toLocaleTimeString()}\n`;
+                }
+                if (initialStatus.error) {
+                    resultHTML += `   • Error: ${initialStatus.error}\n`;
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ WASM loader test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test health monitor
+        window.testHealthMonitor = async function() {
+            const container = document.getElementById('healthResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🏥 Testing health monitor...</div>';
+            
+            try {
+                const { EngineHealthMonitor } = await import('../mega-engine/packages/mega-engine/src/engine-health-monitor.js');
+                const healthMonitor = EngineHealthMonitor.getInstance();
+                
+                // Report some test events
+                healthMonitor.reportSuccess('test-engine-1');
+                healthMonitor.reportSuccess('test-engine-2');
+                healthMonitor.reportFailure('test-engine-3', new Error('Test failure'));
+                
+                const healthReport = healthMonitor.getHealthReport();
+                
+                let resultHTML = '<div class="success">✅ Health Monitor Test Results</div>\n\n';
+                resultHTML += '<div class="stats-grid">';
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${healthReport.overall}</div>
+                    <div class="stat-label">Overall Health</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${healthReport.engines.size}</div>
+                    <div class="stat-label">Engines Tracked</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${healthReport.criticalIssues.length}</div>
+                    <div class="stat-label">Critical Issues</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${healthReport.recommendations.length}</div>
+                    <div class="stat-label">Recommendations</div>
+                </div>`;
+                resultHTML += '</div>\n\n';
+                
+                resultHTML += '🏥 <strong>Health Report:</strong>\n';
+                resultHTML += `   • Overall Status: ${healthReport.overall}\n`;
+                resultHTML += `   • Engines Tracked: ${healthReport.engines.size}\n`;
+                resultHTML += `   • Critical Issues: ${healthReport.criticalIssues.length}\n`;
+                resultHTML += `   • Recommendations: ${healthReport.recommendations.length}\n\n`;
+                
+                resultHTML += '🔧 <strong>Engine Health:</strong>\n';
+                for (const [engine, health] of healthReport.engines) {
+                    resultHTML += `   • ${engine}: ${health.status} (${health.successCount}✓, ${health.failureCount}✗)\n`;
+                }
+                
+                if (healthReport.criticalIssues.length > 0) {
+                    resultHTML += '\n⚠️ <strong>Critical Issues:</strong>\n';
+                    healthReport.criticalIssues.forEach(issue => {
+                        resultHTML += `   • ${issue}\n`;
+                    });
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Health monitor test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test asset loader
+        window.testAssetLoader = async function() {
+            const container = document.getElementById('assetResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📁 Testing asset loader...</div>';
+            
+            try {
+                const { StreamingAssetLoader } = await import('../mega-engine/packages/mega-engine/src/streaming-asset-loader.js');
+                const assetLoader = StreamingAssetLoader.getInstance();
+                
+                // Test loading a small text asset
+                const testText = await assetLoader.loadTextAsset('dict/en_US.aff');
+                const cacheStats = assetLoader.getCacheStats();
+                
+                let resultHTML = '<div class="success">✅ Asset Loader Test Results</div>\n\n';
+                resultHTML += '<div class="stats-grid">';
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${testText.length}</div>
+                    <div class="stat-label">Bytes Loaded</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${cacheStats.memoryCache.hits}</div>
+                    <div class="stat-label">Cache Hits</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${cacheStats.memoryCache.misses}</div>
+                    <div class="stat-label">Cache Misses</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${Math.round(cacheStats.memoryCache.hitRate * 100)}%</div>
+                    <div class="stat-label">Hit Rate</div>
+                </div>`;
+                resultHTML += '</div>\n\n';
+                
+                resultHTML += '📁 <strong>Asset Loader Status:</strong>\n';
+                resultHTML += `   • Text Asset Loaded: ${testText.length} bytes\n`;
+                resultHTML += `   • Memory Cache Hits: ${cacheStats.memoryCache.hits}\n`;
+                resultHTML += `   • Memory Cache Misses: ${cacheStats.memoryCache.misses}\n`;
+                resultHTML += `   • Hit Rate: ${Math.round(cacheStats.memoryCache.hitRate * 100)}%\n`;
+                resultHTML += `   • Cache Size: ${cacheStats.memoryCache.size}\n`;
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Asset loader test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Test full integration
+        window.testFullIntegration = async function() {
+            const container = document.getElementById('integrationResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>🎯 Testing full integration...</div>';
+            
+            try {
+                const { getMegaEngine } = await import('../mega-engine/packages/mega-engine/src/mega-engine.js');
+                megaEngine = getMegaEngine();
+                
+                // Initialize the engine
+                const initSuccess = await megaEngine.init();
+                if (!initSuccess) {
+                    throw new Error('Failed to initialize Mega Engine');
+                }
+                
+                // Test grammar checking
+                const testText = "Between you and I, this are a test of the grammar system. I could of written this better.";
+                const result = await megaEngine.check(testText);
+                
+                let resultHTML = '<div class="success">✅ Full Integration Test Successful</div>\n\n';
+                resultHTML += '<div class="stats-grid">';
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.issues.length}</div>
+                    <div class="stat-label">Issues Found</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.processingTime}ms</div>
+                    <div class="stat-label">Processing Time</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.enginesUsed || 0}</div>
+                    <div class="stat-label">Engines Used</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics.deduplicationEfficiency || 0}%</div>
+                    <div class="stat-label">Deduplication</div>
+                </div>`;
+                resultHTML += '</div>\n\n';
+                
+                resultHTML += '🎯 <strong>Integration Test Results:</strong>\n';
+                resultHTML += `   • Engine Initialized: ✅\n`;
+                resultHTML += `   • Text Checked: ${testText.length} characters\n`;
+                resultHTML += `   • Issues Found: ${result.issues.length}\n`;
+                resultHTML += `   • Processing Time: ${result.statistics.processingTime}ms\n`;
+                resultHTML += `   • Engines Used: ${result.statistics.enginesUsed || 0}\n`;
+                
+                if (result.statistics.engineContributions) {
+                    resultHTML += '\n🚀 <strong>Engine Contributions:</strong>\n';
+                    for (const [engine, count] of Object.entries(result.statistics.engineContributions)) {
+                        resultHTML += `   • ${engine}: ${count} issues\n`;
+                    }
+                }
+                
+                if (result.issues.length > 0) {
+                    resultHTML += '\n🔍 <strong>Sample Issues:</strong>\n';
+                    result.issues.slice(0, 3).forEach((issue, index) => {
+                        resultHTML += `   ${index + 1}. ${issue.message} (${issue.category})\n`;
+                    });
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result success';
+                
+            } catch (error) {
+                container.innerHTML = `❌ Full integration test failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // View system health
+        window.viewSystemHealth = async function() {
+            const container = document.getElementById('systemHealthResults');
+            container.style.display = 'block';
+            container.innerHTML = '<div>📊 Loading system health...</div>';
+            
+            try {
+                if (!megaEngine) {
+                    const { getMegaEngine } = await import('../mega-engine/packages/mega-engine/src/mega-engine.js');
+                    megaEngine = getMegaEngine();
+                    await megaEngine.init();
+                }
+                
+                const healthStatus = megaEngine.getSystemHealthStatus();
+                
+                let resultHTML = '<div class="success">📊 System Health Status</div>\n\n';
+                
+                // Overall health
+                resultHTML += `🏥 <strong>Overall Health:</strong> ${healthStatus.health.overall}\n`;
+                resultHTML += `📅 <strong>Timestamp:</strong> ${new Date(healthStatus.timestamp).toLocaleString()}\n\n`;
+                
+                // Engine status
+                resultHTML += '🔧 <strong>Engine Status:</strong>\n';
+                for (const [engineName, engineStatus] of Object.entries(healthStatus.engines)) {
+                    const status = engineStatus.status;
+                    const statusIcon = status === 'loaded' ? '✅' : status === 'loading' ? '🔄' : '❌';
+                    resultHTML += `   • ${engineName}: ${statusIcon} ${status}\n`;
+                    
+                    if (engineStatus.health) {
+                        const health = engineStatus.health;
+                        resultHTML += `     └─ Health: ${health.status} (${health.successCount}✓, ${health.failureCount}✗)\n`;
+                    }
+                }
+                
+                // Cache information
+                resultHTML += '\n💾 <strong>Cache Information:</strong>\n';
+                resultHTML += `   • Grammar Cache: ${healthStatus.cache.grammarCache.size} items, ${Math.round(healthStatus.cache.grammarCache.hitRate * 100)}% hit rate\n`;
+                resultHTML += `   • Asset Cache: ${healthStatus.cache.assetCache.totalAssets} assets, ${healthStatus.cache.assetCache.totalSize} bytes\n`;
+                
+                // Statistics
+                resultHTML += '\n📈 <strong>Statistics:</strong>\n';
+                resultHTML += `   • Total Checks: ${healthStatus.stats.totalChecks}\n`;
+                resultHTML += `   • Average Time: ${Math.round(healthStatus.stats.averageTime)}ms\n`;
+                resultHTML += `   • Engine Usage: ${JSON.stringify(healthStatus.stats.engineUsage)}\n`;
+                
+                // Critical issues
+                if (healthStatus.health.criticalIssues.length > 0) {
+                    resultHTML += '\n⚠️ <strong>Critical Issues:</strong>\n';
+                    healthStatus.health.criticalIssues.forEach(issue => {
+                        resultHTML += `   • ${issue}\n`;
+                    });
+                }
+                
+                // Recommendations
+                if (healthStatus.health.recommendations.length > 0) {
+                    resultHTML += '\n💡 <strong>Recommendations:</strong>\n';
+                    healthStatus.health.recommendations.forEach(rec => {
+                        resultHTML += `   • ${rec}\n`;
+                    });
+                }
+                
+                container.innerHTML = resultHTML;
+                container.className = 'result info';
+                
+            } catch (error) {
+                container.innerHTML = `❌ System health check failed: ${error.message}`;
+                container.className = 'result error';
+            }
+        };
+
+        // Initialize on page load
+        window.addEventListener('load', async () => {
+            console.log('🚀 Phase 1 Integration Test Page Loaded');
+            console.log('Ready to test Mega Engine with reliable components!');
+        });
+    </script>
+</body>
+</html> 

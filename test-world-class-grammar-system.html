@@ -155,9 +155,9 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌍 World-Class Multi-Engine Grammar System</h1>
+        <h1>🌍 Phase 2: Multi-Engine Grammar Service</h1>
         <p style="text-align: center; color: #718096; font-size: 18px; margin-bottom: 40px;">
-            Professional-grade grammar checking with 10+ engines running in parallel
+            Production-hardened grammar checking with concurrent processing, caching, and failover
         </p>
 
         <!-- Engine Status Test -->
@@ -216,17 +216,32 @@
         // Initialize the Multi-Engine Grammar Service
         async function initializeService() {
             try {
-                console.log('🌍 Initializing World-Class Multi-Engine Grammar Service...');
-                const { default: MultiEngineGrammarService } = await import('./src/services/MultiEngineGrammarService.js');
-                multiEngineService = new MultiEngineGrammarService();
+                console.log('🌍 Test Page: Starting Multi-Engine Grammar Service initialization...');
+                const { default: MultiEngineGrammarService } = await import('./src/services/MultiEngineGrammarService.ts');
                 
-                // Wait a moment for initialization
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log('🔧 Test Page: Creating service instance...');
+                multiEngineService = new MultiEngineGrammarService({
+                    maxConcurrentRequests: 5,
+                    targetProcessingTime: 200,
+                    enableDeduplication: true,
+                    enableCaching: true,
+                    enableFailover: true
+                });
                 
-                console.log('✅ Multi-Engine Grammar Service initialized');
+                // Wait for initialization - the service handles its own async initialization
+                console.log('⏳ Test Page: Waiting for service initialization...');
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                // Verify the service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
+                }
+                
+                console.log('✅ Test Page: Multi-Engine Grammar Service initialized successfully');
                 return true;
             } catch (error) {
-                console.error('❌ Failed to initialize Multi-Engine Grammar Service:', error);
+                console.error('❌ Test Page: Failed to initialize Multi-Engine Grammar Service:', error);
+                multiEngineService = null;
                 return false;
             }
         }
@@ -238,27 +253,34 @@
             container.innerHTML = '<div>🔄 Checking engine status...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
+                    console.log('🔧 Test: Service not initialized, initializing now...');
                     const initialized = await initializeService();
                     if (!initialized) {
-                        throw new Error('Failed to initialize service');
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
                     }
                 }
                 
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
+                }
+                
+                // Get actual engine status from Multi-Engine Service
                 const stats = multiEngineService.getStatistics();
-                const engines = Object.entries(stats.engines);
                 
                 let statusHTML = '<div class="success">✅ Multi-Engine Grammar Service Status</div>\n\n';
                 statusHTML += `<div class="stats-grid">`;
                 
                 statusHTML += `<div class="stat-card">
-                    <div class="stat-value">${stats.global.totalEngines}</div>
-                    <div class="stat-label">Total Engines</div>
+                    <div class="stat-value">${stats.global.totalRequests}</div>
+                    <div class="stat-label">Total Requests</div>
                 </div>`;
                 
                 statusHTML += `<div class="stat-card">
-                    <div class="stat-value">${stats.global.totalChecks}</div>
-                    <div class="stat-label">Total Checks</div>
+                    <div class="stat-value">${Math.round(stats.global.successRate)}%</div>
+                    <div class="stat-label">Success Rate</div>
                 </div>`;
                 
                 statusHTML += `<div class="stat-card">
@@ -267,23 +289,33 @@
                 </div>`;
                 
                 statusHTML += `<div class="stat-card">
-                    <div class="stat-value">${Math.round(stats.global.averageErrorsDetected)}</div>
-                    <div class="stat-label">Avg Errors Detected</div>
+                    <div class="stat-value">${stats.health.systemHealth}</div>
+                    <div class="stat-label">System Health</div>
                 </div>`;
                 
                 statusHTML += `</div>\n\n`;
-                statusHTML += '<strong>🔧 Engine Details:</strong>\n';
+                statusHTML += '<strong>🔧 Service Details:</strong>\n';
+                statusHTML += `\n📊 <strong>Performance:</strong>`;
+                statusHTML += `\n   • Target Time: ${stats.performance.targetTime}ms`;
+                statusHTML += `\n   • Current Average: ${Math.round(stats.performance.currentAverage)}ms`;
+                statusHTML += `\n   • Efficiency: ${Math.round(stats.performance.efficiency)}%`;
+                statusHTML += `\n   • Active Requests: ${stats.global.activeRequests}`;
+                statusHTML += `\n   • Queued Requests: ${stats.global.queuedRequests}`;
+                statusHTML += `\n   • Cache Hit Rate: ${stats.global.cacheHitRate}%`;
                 
-                for (const [engineName, engineStats] of engines) {
-                    const metadata = engineStats.metadata || {};
-                    const isEnabled = metadata.isEnabled ? '✅' : '❌';
-                    const performance = engineStats.averageProcessingTime < 100 ? 'fast' : 
-                                       engineStats.averageProcessingTime < 300 ? 'medium' : 'slow';
+                statusHTML += `\n\n🔧 <strong>Engine Status:</strong>\n`;
+                for (const engine of stats.engines) {
+                    const isLoaded = engine.status === 'loaded' ? '✅' : '❌';
+                    const performance = engine.health.averageProcessingTime < 100 ? 'fast' : 
+                                       engine.health.averageProcessingTime < 300 ? 'medium' : 'slow';
                     
-                    statusHTML += `\n${isEnabled} <strong>${engineName}</strong> (Priority: ${metadata.priority || 0})`;
-                    statusHTML += `<span class="performance-indicator ${performance}">${Math.round(engineStats.averageProcessingTime)}ms</span>`;
-                    statusHTML += `\n   └─ Checks: ${engineStats.checksPerformed}, Errors: ${engineStats.errorsFound}`;
-                    statusHTML += `\n   └─ Types: ${(metadata.errorTypes || []).join(', ')}`;
+                    statusHTML += `\n${isLoaded} <strong>${engine.name}</strong>`;
+                    statusHTML += `<span class="performance-indicator ${performance}">${Math.round(engine.health.averageProcessingTime || 0)}ms</span>`;
+                    statusHTML += `\n   └─ Status: ${engine.status}`;
+                    statusHTML += `\n   └─ Health: ${engine.health.overallHealth} (${engine.health.successCount}✓, ${engine.health.errorCount}✗)`;
+                    if (engine.health.lastUsed) {
+                        statusHTML += `\n   └─ Last Used: ${new Date(engine.health.lastUsed).toLocaleTimeString()}`;
+                    }
                 }
                 
                 container.innerHTML = statusHTML;
@@ -302,8 +334,18 @@
             container.innerHTML = '<div>⚡ Running performance test...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
-                    await initializeService();
+                    console.log('🔧 Test: Service not initialized, initializing now...');
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
+                    }
+                }
+                
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
                 }
                 
                 const complexText = `Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others. In order to achieve better results, we need to accomodate there needs more effectively. This is a neccessary step that will definitly help improve the situation. The occassion calls for immediate action, and we should not embarass ourselves by failing to act. It's wierd how such a simple freind can make such a difference in our lives.`;
@@ -312,12 +354,12 @@
                 const result = await multiEngineService.checkText(complexText);
                 const totalTime = Date.now() - startTime;
                 
-                const performanceRating = totalTime < 400 ? 'Excellent ⚡' : 
-                                        totalTime < 800 ? 'Good 👍' : 
+                const performanceRating = totalTime < 200 ? 'Excellent ⚡' : 
+                                        totalTime < 400 ? 'Good 👍' : 
                                         'Needs Optimization ⚠️';
                 
-                const performanceClass = totalTime < 400 ? 'success' : 
-                                       totalTime < 800 ? 'warning' : 'error';
+                const performanceClass = totalTime < 200 ? 'success' : 
+                                       totalTime < 400 ? 'warning' : 'error';
                 
                 let resultHTML = `<strong>⚡ Performance Test Results</strong>\n\n`;
                 resultHTML += `<div class="stats-grid">`;
@@ -330,7 +372,7 @@
                     <div class="stat-label">Errors Detected</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
-                    <div class="stat-value">${result.statistics.enginesUsed}</div>
+                    <div class="stat-value">${result.statistics?.enginesUsed || 'N/A'}</div>
                     <div class="stat-label">Engines Used</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
@@ -339,17 +381,14 @@
                 </div>`;
                 resultHTML += `</div>\n\n`;
                 
-                resultHTML += `📊 <strong>Engine Performance:</strong>\n`;
-                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
-                    resultHTML += `   • ${engine}: ${issues} issues\n`;
+                if (result.statistics?.engineContributions) {
+                    resultHTML += `📊 <strong>Engine Performance:</strong>\n`;
+                    for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                        resultHTML += `   • ${engine}: ${issues} issues\n`;
+                    }
                 }
                 
-                if (result.statistics.deduplicationEfficiency !== undefined) {
-                    resultHTML += `\n🔍 <strong>Deduplication:</strong> ${result.statistics.deduplicationEfficiency}% efficiency`;
-                    resultHTML += `\n   Raw issues: ${result.statistics.rawIssuesFound} → Final: ${result.issues.length}`;
-                }
-                
-                resultHTML += `\n\n🎯 <strong>Target:</strong> <800ms (Current: ${totalTime}ms)`;
+                resultHTML += `\n\n🎯 <strong>Target:</strong> <200ms (Current: ${totalTime}ms)`;
                 resultHTML += `\n✅ <strong>Status:</strong> ${performanceRating}`;
                 
                 container.innerHTML = resultHTML;
@@ -368,8 +407,18 @@
             container.innerHTML = '<div>🎯 Running comprehensive analysis...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
-                    await initializeService();
+                    console.log('🔧 Test: Service not initialized, initializing now...');
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
+                    }
+                }
+                
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
                 }
                 
                 const challengingText = `Between you and I, each of the students have finished there homework incorrectly. The data clearly shows that none of the participants was prepared for they're final exam. I could of helped them, but their going to have to learn this themself. Me and my colleague thinks that this are a serious problem that effects everyone. Due to the fact that we need to think outside the box, we should seperate the students who performed alot better then the others. In order to achieve better results, we need to accomodate there needs more effectively. This is a neccessary step that will definitly help improve the situation. The occassion calls for immediate action, and we should not embarass ourselves by failing to act. It's wierd how such a simple freind can make such a difference in our lives. Your going to need to loose some weight if you want to be more healthy. Its important to recieve feedback from others who care about you.`;
@@ -391,11 +440,11 @@
                     <div class="stat-label">Total Errors Found</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
-                    <div class="stat-value">${result.statistics.qualityScore || 'N/A'}</div>
+                    <div class="stat-value">${result.statistics?.qualityScore || 'N/A'}</div>
                     <div class="stat-label">Quality Score</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
-                    <div class="stat-value">${result.statistics.processingTime}ms</div>
+                    <div class="stat-value">${result.statistics?.processingTime || 'N/A'}ms</div>
                     <div class="stat-label">Processing Time</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
@@ -404,27 +453,23 @@
                 </div>`;
                 resultHTML += `</div>\n\n`;
                 
-                // Error breakdown by category
-                if (result.statistics.breakdown) {
-                    resultHTML += `📊 <strong>Error Breakdown:</strong>\n`;
-                    for (const [category, count] of Object.entries(result.statistics.breakdown)) {
-                        resultHTML += `   • ${category}: ${count} errors\n`;
+                // Engine contributions with latencies
+                if (result.statistics?.engineContributions) {
+                    resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
+                    for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                        const latency = result.statistics.engineLatencies?.[engine] || 'N/A';
+                        const performance = typeof latency === 'number' ? 
+                            (latency < 100 ? '⚡' : latency < 300 ? '👍' : '⚠️') : '';
+                        resultHTML += `   • ${engine}: ${issues} issues (${latency}ms) ${performance}\n`;
                     }
-                    resultHTML += `\n`;
-                }
-                
-                // Engine contributions
-                resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
-                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
-                    resultHTML += `   • ${engine}: ${issues} issues\n`;
                 }
                 
                 // Sample issues
                 resultHTML += `\n🔍 <strong>Sample Issues Found:</strong>\n`;
                 result.issues.slice(0, 5).forEach((issue, index) => {
                     resultHTML += `\n${index + 1}. <strong>${issue.message}</strong>`;
-                    resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
-                    resultHTML += `\n   Category: ${issue.category} | Confidence: ${Math.round((issue.confidence || 0) * 100)}%`;
+                    resultHTML += `<span class="engine-badge">${issue.engine || 'unknown'}</span>`;
+                    resultHTML += `\n   Category: ${issue.category || 'unknown'} | Confidence: ${Math.round((issue.confidence || 0) * 100)}%`;
                     if (issue.suggestions && issue.suggestions.length > 0) {
                         resultHTML += `\n   Suggestions: ${issue.suggestions.slice(0, 2).join(', ')}`;
                     }
@@ -456,8 +501,18 @@
             container.innerHTML = '<div>✍️ Analyzing custom text...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
-                    await initializeService();
+                    console.log('🔧 Test: Service not initialized, initializing now...');
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
+                    }
+                }
+                
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
                 }
                 
                 const text = textArea.value;
@@ -474,7 +529,7 @@
                     <div class="stat-label">Characters</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
-                    <div class="stat-value">${result.statistics.wordCount || text.split(/\s+/).length}</div>
+                    <div class="stat-value">${text.split(/\s+/).length}</div>
                     <div class="stat-label">Words</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
@@ -482,7 +537,7 @@
                     <div class="stat-label">Issues Found</div>
                 </div>`;
                 resultHTML += `<div class="stat-card">
-                    <div class="stat-value">${result.statistics.processingTime}ms</div>
+                    <div class="stat-value">${result.statistics?.processingTime || 'N/A'}ms</div>
                     <div class="stat-label">Processing Time</div>
                 </div>`;
                 resultHTML += `</div>\n\n`;
@@ -491,8 +546,8 @@
                     resultHTML += `🔍 <strong>Issues Found:</strong>\n`;
                     result.issues.forEach((issue, index) => {
                         resultHTML += `\n${index + 1}. <strong>${issue.message}</strong>`;
-                        resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
-                        resultHTML += `\n   Category: ${issue.category} | Severity: ${issue.severity}`;
+                        resultHTML += `<span class="engine-badge">${issue.engine || 'unknown'}</span>`;
+                        resultHTML += `\n   Category: ${issue.category || 'unknown'} | Severity: ${issue.severity || 'medium'}`;
                         if (issue.suggestions && issue.suggestions.length > 0) {
                             resultHTML += `\n   Suggestions: ${issue.suggestions.join(', ')}`;
                         }
@@ -518,8 +573,18 @@
             container.innerHTML = '<div>🔍 Testing deduplication...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
-                    await initializeService();
+                    console.log('🔧 Test: Service not initialized, initializing now...');
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
+                    }
+                }
+                
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
                 }
                 
                 // Text with errors that multiple engines should detect
@@ -528,55 +593,42 @@
                 const result = await multiEngineService.checkText(duplicateText);
                 
                 let resultHTML = `<strong>🔍 Deduplication Test Results</strong>\n\n`;
-                
-                if (result.statistics.rawIssuesFound && result.statistics.deduplicationEfficiency !== undefined) {
-                    resultHTML += `<div class="stats-grid">`;
-                    resultHTML += `<div class="stat-card">
-                        <div class="stat-value">${result.statistics.rawIssuesFound}</div>
-                        <div class="stat-label">Raw Issues</div>
-                    </div>`;
-                    resultHTML += `<div class="stat-card">
-                        <div class="stat-value">${result.issues.length}</div>
-                        <div class="stat-label">Final Issues</div>
-                    </div>`;
-                    resultHTML += `<div class="stat-card">
-                        <div class="stat-value">${result.statistics.deduplicationEfficiency}%</div>
-                        <div class="stat-label">Efficiency</div>
-                    </div>`;
-                    resultHTML += `<div class="stat-card">
-                        <div class="stat-value">${result.statistics.rawIssuesFound - result.issues.length}</div>
-                        <div class="stat-label">Duplicates Removed</div>
-                    </div>`;
-                    resultHTML += `</div>\n\n`;
-                    
-                    const efficiency = result.statistics.deduplicationEfficiency;
-                    const efficiencyRating = efficiency > 30 ? 'Excellent 🏆' :
-                                          efficiency > 15 ? 'Good 👍' :
-                                          efficiency > 0 ? 'Basic ⚠️' : 'No Duplicates';
-                    
-                    resultHTML += `✅ <strong>Deduplication Status:</strong> ${efficiencyRating}\n`;
-                    resultHTML += `📊 <strong>Efficiency:</strong> ${efficiency}% of raw issues were duplicates\n\n`;
-                } else {
-                    resultHTML += `📊 <strong>Issues Found:</strong> ${result.issues.length}\n`;
-                    resultHTML += `⚠️ <strong>Note:</strong> Deduplication metrics not available\n\n`;
-                }
+                resultHTML += `<div class="stats-grid">`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.issues.length}</div>
+                    <div class="stat-label">Final Issues</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics?.enginesUsed || 'N/A'}</div>
+                    <div class="stat-label">Engines Used</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics?.deduplicationEfficiency || 'N/A'}%</div>
+                    <div class="stat-label">Deduplication Efficiency</div>
+                </div>`;
+                resultHTML += `<div class="stat-card">
+                    <div class="stat-value">${result.statistics?.processingTime || 'N/A'}ms</div>
+                    <div class="stat-label">Processing Time</div>
+                </div>`;
+                resultHTML += `</div>\n\n`;
                 
                 // Show engine contributions
-                resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
-                for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
-                    resultHTML += `   • ${engine}: ${issues} issues\n`;
+                if (result.statistics?.engineContributions) {
+                    resultHTML += `🚀 <strong>Engine Contributions:</strong>\n`;
+                    for (const [engine, issues] of Object.entries(result.statistics.engineContributions)) {
+                        const latency = result.statistics.engineLatencies?.[engine] || 'N/A';
+                        const performance = typeof latency === 'number' ? 
+                            (latency < 100 ? '⚡' : latency < 300 ? '👍' : '⚠️') : '';
+                        resultHTML += `   • ${engine}: ${issues} issues (${latency}ms) ${performance}\n`;
+                    }
                 }
                 
                 // Show final issues
                 if (result.issues.length > 0) {
-                    resultHTML += `\n🔍 <strong>Final Deduplicated Issues:</strong>\n`;
+                    resultHTML += `\n🔍 <strong>Final Issues:</strong>\n`;
                     result.issues.forEach((issue, index) => {
                         resultHTML += `\n${index + 1}. ${issue.message}`;
-                        if (issue.sourceEngines && issue.sourceEngines.length > 1) {
-                            resultHTML += ` <em>(merged from: ${issue.sourceEngines.join(', ')})</em>`;
-                        } else {
-                            resultHTML += `<span class="engine-badge">${issue.engine}</span>`;
-                        }
+                        resultHTML += `<span class="engine-badge">${issue.engine || 'unknown'}</span>`;
                     });
                 }
                 
@@ -596,47 +648,70 @@
             container.innerHTML = '<div>📊 Loading statistics...</div>';
             
             try {
+                // Ensure service is initialized and ready
                 if (!multiEngineService) {
-                    await initializeService();
+                    console.log('🔧 Test: Service not initialized, initializing now...');
+                    const initialized = await initializeService();
+                    if (!initialized) {
+                        throw new Error('Failed to initialize Multi-Engine Grammar Service');
+                    }
+                }
+                
+                // Double-check service is ready
+                if (!multiEngineService) {
+                    throw new Error('Service instance is null after initialization');
                 }
                 
                 const stats = multiEngineService.getStatistics();
                 
-                let resultHTML = `<strong>📊 World-Class Grammar System Statistics</strong>\n\n`;
+                let resultHTML = `<strong>📊 Multi-Engine Grammar Service Statistics</strong>\n\n`;
                 
                 // Global stats
                 resultHTML += `🌍 <strong>Global Statistics:</strong>\n`;
-                resultHTML += `   • Total Engines: ${stats.global.totalEngines}\n`;
-                resultHTML += `   • Total Checks: ${stats.global.totalChecks}\n`;
+                resultHTML += `   • Total Requests: ${stats.global.totalRequests}\n`;
+                resultHTML += `   • Success Rate: ${Math.round(stats.global.successRate)}%\n`;
                 resultHTML += `   • Average Processing Time: ${Math.round(stats.global.averageProcessingTime)}ms\n`;
-                resultHTML += `   • Average Errors Detected: ${Math.round(stats.global.averageErrorsDetected)}\n`;
-                resultHTML += `   • Deduplication Efficiency: ${stats.global.deduplicationEfficiency}%\n\n`;
+                resultHTML += `   • Cache Hit Rate: ${stats.global.cacheHitRate}%\n`;
+                resultHTML += `   • Active Requests: ${stats.global.activeRequests}\n`;
+                resultHTML += `   • Queued Requests: ${stats.global.queuedRequests}\n\n`;
+                
+                // Performance stats
+                resultHTML += `⚡ <strong>Performance Metrics:</strong>\n`;
+                resultHTML += `   • Target Time: ${stats.performance.targetTime}ms\n`;
+                resultHTML += `   • Current Average: ${Math.round(stats.performance.currentAverage)}ms\n`;
+                resultHTML += `   • Efficiency: ${Math.round(stats.performance.efficiency)}%\n\n`;
                 
                 // Engine details
                 resultHTML += `🔧 <strong>Engine Performance:</strong>\n`;
-                for (const [engineName, engineStats] of Object.entries(stats.engines)) {
-                    const metadata = engineStats.metadata || {};
-                    const status = metadata.isEnabled ? '✅ Active' : '❌ Disabled';
+                for (const engine of stats.engines) {
+                    const status = engine.status === 'loaded' ? '✅ Active' : '❌ Disabled';
                     
-                    resultHTML += `\n<strong>${engineName}</strong> ${status}\n`;
-                    resultHTML += `   • Priority: ${metadata.priority || 'N/A'}\n`;
-                    resultHTML += `   • Checks Performed: ${engineStats.checksPerformed}\n`;
-                    resultHTML += `   • Errors Found: ${engineStats.errorsFound}\n`;
-                    resultHTML += `   • Average Processing Time: ${Math.round(engineStats.averageProcessingTime)}ms\n`;
-                    resultHTML += `   • Success Rate: ${Math.round((engineStats.successRate || 1) * 100)}%\n`;
-                    resultHTML += `   • Error Types: ${(metadata.errorTypes || []).join(', ')}\n`;
-                    if (engineStats.lastUsed) {
-                        resultHTML += `   • Last Used: ${new Date(engineStats.lastUsed).toLocaleTimeString()}\n`;
+                    resultHTML += `\n<strong>${engine.name}</strong> ${status}\n`;
+                    resultHTML += `   • Status: ${engine.status}\n`;
+                    resultHTML += `   • Health: ${engine.health.overallHealth}\n`;
+                    resultHTML += `   • Success Count: ${engine.health.successCount}\n`;
+                    resultHTML += `   • Error Count: ${engine.health.errorCount}\n`;
+                    resultHTML += `   • Average Processing Time: ${Math.round(engine.health.averageProcessingTime || 0)}ms\n`;
+                    if (engine.health.lastUsed) {
+                        resultHTML += `   • Last Used: ${new Date(engine.health.lastUsed).toLocaleTimeString()}\n`;
+                    }
+                }
+                
+                // Health recommendations
+                if (stats.health.recommendations.length > 0) {
+                    resultHTML += `\n💡 <strong>Recommendations:</strong>\n`;
+                    for (const rec of stats.health.recommendations) {
+                        resultHTML += `   • ${rec}\n`;
                     }
                 }
                 
                 resultHTML += `\n\n🎯 <strong>Performance Goals:</strong>\n`;
-                resultHTML += `   • Processing Time: <800ms `;
-                resultHTML += stats.global.averageProcessingTime < 800 ? '✅' : '❌';
-                resultHTML += `\n   • Error Detection: 15-25 errors `;
-                resultHTML += stats.global.averageErrorsDetected >= 15 ? '✅' : '❌';
-                resultHTML += `\n   • Engines Running: 8+ `;
-                resultHTML += stats.global.totalEngines >= 8 ? '✅' : '❌';
+                resultHTML += `   • Processing Time: <200ms `;
+                resultHTML += (stats.performance.currentAverage || 0) < 200 ? '✅' : '❌';
+                resultHTML += `\n   • Success Rate: >95% `;
+                resultHTML += (stats.global.successRate || 0) > 95 ? '✅' : '❌';
+                resultHTML += `\n   • Cache Hit Rate: >20% `;
+                resultHTML += (stats.global.cacheHitRate || 0) > 20 ? '✅' : '❌';
                 
                 container.innerHTML = resultHTML;
                 container.className = 'result info';
@@ -649,10 +724,16 @@
 
         // Initialize service on page load
         window.addEventListener('load', async () => {
-            console.log('🌍 Page loaded, initializing World-Class Grammar System...');
+            console.log('🌍 Page loaded, initializing Multi-Engine Grammar Service...');
             try {
-                await initializeService();
-                console.log('✅ Ready to test!');
+                const success = await initializeService();
+                if (success && multiEngineService) {
+                    // Make service globally accessible
+                    window.multiEngineService = multiEngineService;
+                    console.log('✅ Ready to test! Service is globally accessible');
+                } else {
+                    console.error('❌ Service initialization failed or service is null');
+                }
             } catch (error) {
                 console.error('❌ Initialization failed:', error);
             }

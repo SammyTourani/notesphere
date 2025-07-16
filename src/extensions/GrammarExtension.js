@@ -296,9 +296,9 @@ export const GrammarExtension = Extension.create({
             issue.to,
             state.schema.text(suggestion)
           );
-          
+                
           if (dispatch) dispatch(tr);
-          return true;
+              return true;
         },
         
       // Command to enable/disable grammar checking
@@ -309,7 +309,7 @@ export const GrammarExtension = Extension.create({
           if (!enabled) {
             commands.updateGrammarDecorations([]);
           }
-          return true;
+              return true;
         },
     };
   },
@@ -326,7 +326,7 @@ export const GrammarExtension = Extension.create({
             const meta = tr.getMeta(grammarPluginKey);
             if (meta) {
               return meta;
-            }
+              }
             return decorationSet.map(tr.mapping, tr.doc);
           },
         },
@@ -370,14 +370,14 @@ export const GrammarExtension = Extension.create({
                   return false;
                 }
                 
-                const decorations = grammarPluginKey.getState(view.state);
+              const decorations = grammarPluginKey.getState(view.state);
                 console.log('📋 Available decorations:', decorations ? 'Found' : 'None');
                 
                 if (decorations && pos !== undefined) {
                   // Search a range around the position
                   const searchRange = 5;
                   decorations.find(Math.max(0, pos - searchRange), pos + searchRange).forEach(decoration => {
-                    if (decoration.spec.issueData) {
+                  if (decoration.spec.issueData) {
                       const issue = decoration.spec.issueData;
                       console.log('🎯 Found issue for click:', issue);
                       
@@ -411,7 +411,7 @@ export const GrammarExtension = Extension.create({
                         if (this.options.onIssueClicked) {
                           console.log('📞 Calling onIssueClicked callback');
                           this.options.onIssueClicked(issue);
-                        }
+              }
                       }, 150);
                       
                       event.preventDefault();
@@ -421,10 +421,10 @@ export const GrammarExtension = Extension.create({
                   });
                 } else {
                   console.warn('❌ No decorations found or invalid position');
-                }
               }
-              return false;
             }
+              return false;
+        }
           }
         },
       }),

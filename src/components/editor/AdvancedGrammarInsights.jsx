@@ -80,7 +80,14 @@ const AdvancedGrammarInsights = React.forwardRef(({
     avgWordsPerSentence: 15,
     complexSentences: 0,
     passiveVoice: 0,
-    categoryBreakdown: {}
+    categoryBreakdown: {},
+    // 🧠 PHASE 1: Intelligence classification analytics
+    intelligenceBreakdown: {
+      autoFixable: 0,
+      semiFixable: 0,
+      manualOnly: 0,
+      legacy: 0
+    }
   });
 
   // === REALTIME WRITING STATS ===
@@ -313,11 +320,14 @@ const AdvancedGrammarInsights = React.forwardRef(({
       setIsProcessing(false);
       
       if (controllerIssues && controllerIssues.length > 0) {
-        // Process issues for UI
+        // Process issues for UI with intelligence metadata
         const processedIssues = controllerIssues.map((issue) => ({
           ...issue,
           displayText: issue.originalText || issue.text || '',
-          isAutoFixable: !!(issue.suggestions && issue.suggestions.length > 0)
+          // Use new intelligence classification if available, fallback to legacy logic
+          isAutoFixable: issue.intelligence?.classification === 'auto-fixable' || 
+                        (issue.isAutoFixable !== undefined ? issue.isAutoFixable : 
+                         !!(issue.suggestions && issue.suggestions.length > 0))
         }));
 
         setIssues(processedIssues);
@@ -328,6 +338,14 @@ const AdvancedGrammarInsights = React.forwardRef(({
         const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0).length;
         const avgWordsPerSentence = sentences > 0 ? Math.round(totalWords / sentences) : 0;
         
+        // 🧠 PHASE 1: Intelligence classification breakdown
+        const intelligenceBreakdown = {
+          autoFixable: processedIssues.filter(i => i.intelligence?.classification === 'auto-fixable').length,
+          semiFixable: processedIssues.filter(i => i.intelligence?.classification === 'semi-fixable').length,
+          manualOnly: processedIssues.filter(i => i.intelligence?.classification === 'manual-only').length,
+          legacy: processedIssues.filter(i => !i.intelligence?.classification).length
+        };
+        
         // Category breakdown
         const categoryBreakdown = {};
         processedIssues.forEach(issue => {
@@ -335,7 +353,9 @@ const AdvancedGrammarInsights = React.forwardRef(({
           categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + 1;
         });
 
-        const writingScore = Math.max(0, Math.min(100, 100 - (processedIssues.length * 2)));
+        // Enhanced writing score calculation using intelligence data
+        const intelligenceBonus = intelligenceBreakdown.autoFixable * 0.5; // Bonus for having auto-fixable issues
+        const writingScore = Math.max(0, Math.min(100, 100 - (processedIssues.length * 2) + intelligenceBonus));
         
         setAnalytics(prev => ({
           ...prev,
@@ -345,6 +365,8 @@ const AdvancedGrammarInsights = React.forwardRef(({
           writingScore,
           avgWordsPerSentence,
           categoryBreakdown,
+          // 🧠 PHASE 1: Add intelligence breakdown to analytics
+          intelligenceBreakdown,
           readabilityScore: Math.max(60, 100 - (processedIssues.length * 1.5)),
           professionalismScore: Math.max(70, 100 - (processedIssues.length * 1.8)),
           clarityScore: Math.max(65, 100 - (processedIssues.length * 1.6))
@@ -587,9 +609,35 @@ const AdvancedGrammarInsights = React.forwardRef(({
               <h4 className="font-semibold text-sm tracking-wide" style={{ color: category.color }}>
                 {(category.label || issue.category || 'ISSUE').toUpperCase()}
               </h4>
-              {issue.isAutoFixable && (
-                <span className="px-2 py-1 bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-900/30 dark:to-green-900/30 text-emerald-700 dark:text-emerald-300 text-xs rounded-full font-semibold">
+              {/* 🧠 PHASE 1: Enhanced intelligence classification badges */}
+              {issue.intelligence?.classification === 'auto-fixable' && (
+                <span className="px-2 py-1 bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-900/30 dark:to-green-900/30 text-emerald-700 dark:text-emerald-300 text-xs rounded-full font-semibold flex items-center gap-1">
+                  <Zap size={10} />
                   Auto-fixable
+                </span>
+              )}
+              {issue.intelligence?.classification === 'semi-fixable' && (
+                <span className="px-2 py-1 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30 text-yellow-700 dark:text-yellow-300 text-xs rounded-full font-semibold flex items-center gap-1">
+                  <Brain size={10} />
+                  Review suggested
+                </span>
+              )}
+              {issue.intelligence?.classification === 'manual-only' && (
+                <span className="px-2 py-1 bg-gradient-to-r from-gray-100 to-slate-100 dark:from-gray-900/30 dark:to-slate-900/30 text-gray-700 dark:text-gray-300 text-xs rounded-full font-semibold flex items-center gap-1">
+                  <Eye size={10} />
+                  Manual review
+                </span>
+              )}
+              {/* Fallback for legacy issues without intelligence data */}
+              {!issue.intelligence?.classification && issue.isAutoFixable && (
+                <span className="px-2 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full font-semibold">
+                  Auto-fixable
+                </span>
+              )}
+              {/* Show confidence score for high-confidence classifications */}
+              {issue.intelligence?.confidence && issue.intelligence.confidence > 0.8 && (
+                <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs rounded border border-blue-200 dark:border-blue-800">
+                  {Math.round(issue.intelligence.confidence * 100)}%
                 </span>
               )}
             </div>
@@ -609,25 +657,63 @@ const AdvancedGrammarInsights = React.forwardRef(({
               <div className="mb-4 p-3 bg-green-50/80 dark:bg-green-900/20 rounded-xl border border-green-200/50 dark:border-green-800/30">
                 <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Suggestion: </span>
                 <span className="font-mono text-sm text-green-800 dark:text-green-200">"{suggestion}"</span>
+                {/* 🧠 PHASE 1: Show intelligence reasoning when available */}
+                {issue.intelligence?.reasoning && issue.intelligence.hasAnalysis && (
+                  <div className="mt-2 pt-2 border-t border-green-200/50 dark:border-green-800/30">
+                    <span className="text-xs text-green-600/80 dark:text-green-400/80 font-medium">Analysis: </span>
+                    <span className="text-xs text-green-700 dark:text-green-300">{issue.intelligence.reasoning}</span>
+                  </div>
+                )}
               </div>
             )}
             
             <div className="flex gap-3">
-              {issue.isAutoFixable && suggestion ? (
+              {/* 🧠 PHASE 1: Smart action buttons based on intelligence classification */}
+              {issue.intelligence?.classification === 'auto-fixable' && suggestion ? (
                 <motion.button
                   onClick={() => autoFixIssue(issue, suggestion)}
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-green-500/25 transition-all duration-200"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  title={`Auto-fix with ${Math.round((issue.intelligence.confidence || 0.8) * 100)}% confidence`}
                 >
                   <Zap size={14} />
-                  Fix
+                  Auto-fix
                 </motion.button>
-              ) : (
-                <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-xl font-semibold">
+              ) : issue.intelligence?.classification === 'semi-fixable' && suggestion ? (
+                <motion.button
+                  onClick={() => autoFixIssue(issue, suggestion)}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-yellow-500/25 transition-all duration-200"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  title={`Apply suggestion (recommended to review first)`}
+                >
+                  <Brain size={14} />
+                  Apply & Review
+                </motion.button>
+              ) : issue.intelligence?.classification === 'manual-only' ? (
+                <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-xl font-semibold" title={issue.intelligence?.reasoning || 'Requires manual review'}>
                   <Eye size={14} />
-                  Manual
+                  Manual Review
                 </span>
+              ) : (
+                // Fallback for legacy issues or when suggestions are available
+                issue.isAutoFixable && suggestion ? (
+                  <motion.button
+                    onClick={() => autoFixIssue(issue, suggestion)}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-blue-500/25 transition-all duration-200"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <Zap size={14} />
+                    Fix
+                  </motion.button>
+                ) : (
+                  <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-xl font-semibold">
+                    <Eye size={14} />
+                    Manual
+                  </span>
+                )
               )}
               
               <motion.button

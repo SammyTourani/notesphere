@@ -1,17 +1,26 @@
-declare module './nlp/pkg/nlprule_wasm.js' {
-  export default function init(input?: any): Promise<void>;
-  export class NlpRuleChecker {
-    static new(): NlpRuleChecker;
-    static new_with_rules(rules: Uint8Array): NlpRuleChecker;
-    check(text: string): string;
-  }
-}
+/**
+ * Type declarations for nlprule WASM module
+ */
 
-declare module './nlprule_wasm.js' {
-  export default function init(input?: any): Promise<void>;
-  export class NlpRuleChecker {
-    static new(): NlpRuleChecker;
-    static new_with_rules(rules: Uint8Array): NlpRuleChecker;
-    check(text: string): string;
+declare module './nlp/pkg/nlprule_wasm.js' {
+  export interface NlpRuleChecker {
+    new(): {
+      check(text: string): Array<{
+        message: string;
+        offset: number;
+        length: number;
+        suggestions?: string[];
+        rule_id?: string;
+        rule_description?: string;
+      }>;
+    };
   }
+
+  export interface NlpRuleModule {
+    NlpRuleChecker: NlpRuleChecker;
+    default?: (wasmBinary: ArrayBuffer | string) => Promise<void>;
+  }
+
+  const module: NlpRuleModule;
+  export default module;
 }

@@ -1,7 +1,24 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  // Configure module resolution
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@mega-engine': resolve(__dirname, 'mega-engine/packages/mega-engine/src'),
+    },
+  },
+  
+  // Development server configuration
+  server: {
+    port: 3000,
+    open: true,
+    cors: true,
+  },
+  
+  // Optimize dependencies
+  optimizeDeps: {
+    include: ['uuid'],
+  },
 })

@@ -1,6 +1,6 @@
 /**
  * REAL Mega Grammar Engine - Uses the Actual nlprule WASM Engine
- * This is what you wanted - the sophisticated grammar engine with thousands of rules
+ * PHASE 1 INTEGRATION: Reliable WASM loading, health monitoring, structured logging
  */
 
 import type { 
@@ -12,21 +12,39 @@ import type {
   IssueCategory 
 } from './types.js';
 
-// Use the REAL nlprule WASM engine
+// PHASE 1: Import new reliable components
+import { ReliableWasmLoader } from './reliable-wasm-loader.js';
+import { Logger } from './logger.js';
+import { EngineHealthMonitor } from './engine-health-monitor.js';
+import { StreamingAssetLoader } from './streaming-asset-loader.js';
+
+// Legacy components (will be replaced in Phase 2)
 import { ProfessionalHunspellChecker } from './spell-checker-nspell.js';
 import { StyleChecker } from './style-checker.js';
 import { SmartCache } from './cache.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class NlpruleRealEngine {
+  // PHASE 1: New reliable components
+  private wasmLoader = ReliableWasmLoader.getInstance();
+  private logger = new Logger('NlpruleRealEngine');
+  private healthMonitor = EngineHealthMonitor.getInstance();
+  private assetLoader = StreamingAssetLoader.getInstance();
+  
+  // Legacy components
   private spellChecker = new ProfessionalHunspellChecker();
   private styleChecker = new StyleChecker();
   private cache = new SmartCache<CheckResult>(1000);
+  
+  // Engine state
   private isInitialized = false;
   private options: InitOptions = {};
   private grammarWorker: Worker | null = null;
   private workerReady = false;
+  private wasmModule: any = null;
+  private nlpRuleChecker: any = null;
 
+  // PHASE 1: Enhanced statistics with health tracking
   private stats = {
     totalChecks: 0,
     engineUsage: {
@@ -36,14 +54,17 @@ export class NlpruleRealEngine {
       cached: 0
     },
     averageTime: 0,
-    totalTime: 0
+    totalTime: 0,
+    wasmLoadAttempts: 0,
+    lastWasmLoadTime: 0
   };
 
   /**
-   * Initialize the real nlprule mega engine
+   * Initialize the real nlprule mega engine with Phase 1 reliability
    */
   async init(options: InitOptions = {}): Promise<boolean> {
     if (this.isInitialized) {
+      this.logger.debug('Engine already initialized');
       return true;
     }
 
@@ -62,103 +83,126 @@ export class NlpruleRealEngine {
     };
 
     try {
-      console.log('🚀 Initializing REAL nlprule WASM Grammar Engine...');
+      this.logger.info('🚀 Initializing REAL nlprule WASM Grammar Engine (Phase 1)...');
 
       const initPromises: Promise<boolean>[] = [];
 
-      // Initialize REAL nlprule WASM grammar engine
+      // PHASE 1: Initialize REAL nlprule WASM grammar engine with reliable loader
       if (this.options.engines?.nlprule) {
-        console.log('   📦 Initializing REAL nlprule WASM Grammar Engine...');
+        this.logger.info('📦 Initializing REAL nlprule WASM Grammar Engine...');
         initPromises.push(this.initNlpruleGrammar());
       }
 
+      // Initialize spell checker with health monitoring
       if (this.options.engines?.hunspell || this.options.engines?.symspell) {
-        console.log('   📚 Initializing Spell Checker...');
-        initPromises.push(this.spellChecker.initialize(this.options));
+        this.logger.info('📚 Initializing Spell Checker...');
+        initPromises.push(this.initSpellChecker());
       }
 
+      // Initialize style checker with health monitoring
       if (this.options.engines?.writeGood || this.options.engines?.retext) {
-        console.log('   ✨ Initializing Style Checker...');
-        initPromises.push(this.styleChecker.initialize(this.options));
+        this.logger.info('✨ Initializing Style Checker...');
+        initPromises.push(this.initStyleChecker());
       }
 
       // Wait for all engines to initialize
       const results = await Promise.allSettled(initPromises);
       
-      // Log initialization results
+      // PHASE 1: Report initialization results to health monitor
       results.forEach((result, index) => {
+        const engineNames = ['nlprule-wasm', 'hunspell', 'style-checker'];
+        const engineName = engineNames[index] || `engine-${index}`;
+        
         if (result.status === 'rejected') {
-          console.warn(`Engine ${index} failed to initialize:`, result.reason);
+          this.logger.warn(`Engine ${engineName} failed to initialize:`, { error: result.reason });
+          this.healthMonitor.reportFailure(engineName, new Error(result.reason));
         } else {
-          console.log(`✅ Engine ${index} initialized successfully`);
+          this.logger.info(`✅ Engine ${engineName} initialized successfully`);
+          this.healthMonitor.reportSuccess(engineName);
         }
       });
 
       this.isInitialized = true;
-      console.log('✅ REAL nlprule WASM Grammar Engine initialized successfully');
+      this.logger.info('✅ REAL nlprule WASM Grammar Engine initialized successfully (Phase 1)');
       
       return true;
 
     } catch (error) {
-      console.error('❌ Failed to initialize REAL nlprule Grammar Engine:', error);
+      this.logger.error('❌ Failed to initialize REAL nlprule Grammar Engine:', { error });
+      this.healthMonitor.reportFailure('nlprule-engine', error instanceof Error ? error : new Error('Unknown error'));
       return false;
     }
   }
 
   /**
-   * Initialize the real nlprule WASM grammar engine
+   * PHASE 1: Initialize the real nlprule WASM grammar engine with reliable loader
    */
   private async initNlpruleGrammar(): Promise<boolean> {
     try {
-      if (typeof window === 'undefined') {
-        // Node.js - use direct import
-        console.log('   🔧 Node.js: Using direct nlprule import...');
-        return true;
-      }
-
-      // Browser - use worker
-      console.log('   🔧 Browser: Initializing nlprule WASM worker...');
+      this.stats.wasmLoadAttempts++;
+      this.stats.lastWasmLoadTime = Date.now();
       
-      this.grammarWorker = new Worker(
-        new URL('./grammar-worker.js', import.meta.url), 
-        { type: 'module' }
-      );
-
-      // Wait for worker to be ready
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('nlprule WASM worker initialization timeout'));
-        }, 30000); // 30 second timeout
-
-        this.grammarWorker!.onmessage = (e) => {
-          if (e.data === '__ready__') {
-            clearTimeout(timeout);
-            this.workerReady = true;
-            console.log('   ✅ nlprule WASM worker ready');
-            resolve(true);
-          } else if (e.data?.error) {
-            clearTimeout(timeout);
-            reject(new Error(`nlprule WASM worker error: ${e.data.error}`));
-          }
-        };
-
-        this.grammarWorker!.onerror = (error) => {
-          clearTimeout(timeout);
-          reject(error);
-        };
-
-        // Initialize the worker
-        this.grammarWorker!.postMessage('__init__');
-      });
+      this.logger.info('🔧 Loading nlprule WASM with reliable loader...');
+      
+      // PHASE 1: Use the reliable WASM loader instead of broken worker system
+      this.logger.debug('Loading WASM module...');
+      const wasmResult = await this.wasmLoader.load();
+      this.wasmModule = wasmResult;
+      this.nlpRuleChecker = wasmResult.NlpRuleChecker;
+      this.logger.debug('WASM module loaded successfully');
+      
+      this.logger.info('✅ nlprule WASM loaded successfully with reliable loader');
+      this.healthMonitor.reportSuccess('nlprule-wasm');
+      
+      return true;
 
     } catch (error) {
-      console.error('❌ Failed to initialize nlprule WASM grammar engine:', error);
-      return false;
+      this.logger.error('❌ Failed to initialize nlprule WASM grammar engine:', { error });
+      this.healthMonitor.reportFailure('nlprule-wasm', error instanceof Error ? error : new Error('Unknown error'));
+      
+      // PHASE 1: No silent fallbacks - throw the error
+      throw new Error(`nlprule WASM initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
-   * Check text using the real nlprule WASM engine
+   * PHASE 1: Initialize spell checker with health monitoring
+   */
+  private async initSpellChecker(): Promise<boolean> {
+    try {
+      const success = await this.spellChecker.initialize(this.options);
+      if (success) {
+        this.healthMonitor.reportSuccess('hunspell');
+        return true;
+      } else {
+        throw new Error('Spell checker initialization returned false');
+      }
+    } catch (error) {
+      this.healthMonitor.reportFailure('hunspell', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  /**
+   * PHASE 1: Initialize style checker with health monitoring
+   */
+  private async initStyleChecker(): Promise<boolean> {
+    try {
+      const success = await this.styleChecker.initialize(this.options);
+      if (success) {
+        this.healthMonitor.reportSuccess('style-checker');
+        return true;
+      } else {
+        throw new Error('Style checker initialization returned false');
+      }
+    } catch (error) {
+      this.healthMonitor.reportFailure('style-checker', error instanceof Error ? error : new Error('Unknown error'));
+      throw error;
+    }
+  }
+
+  /**
+   * Check text using the real nlprule WASM engine with Phase 1 reliability
    */
   async check(text: string, options: CheckOptions = {}): Promise<CheckResult> {
     if (!this.isInitialized) {
@@ -170,46 +214,52 @@ export class NlpruleRealEngine {
     const cached = this.cache.get(cacheKey);
     if (cached) {
       this.stats.engineUsage.cached++;
+      this.logger.debug('Cache hit for text check');
       return cached;
     }
 
     const startTime = Date.now();
 
     try {
-      console.log(`🔍 Checking text with REAL nlprule WASM: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+      this.logger.info(`🔍 Checking text with REAL nlprule WASM: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
       
       // Run all engines in parallel
       const checkPromises: Promise<Issue[]>[] = [];
 
-      // REAL nlprule WASM Grammar Engine
+      // PHASE 1: REAL nlprule WASM Grammar Engine with reliable loader
       if (this.options.engines?.nlprule && this._shouldCheckCategory('grammar', options.categories)) {
         checkPromises.push(this._runNlpruleGrammarCheck(text));
       }
 
-      // Spell Checker
+      // Spell Checker with health monitoring
       if ((this.options.engines?.hunspell || this.options.engines?.symspell) && 
           this._shouldCheckCategory('spelling', options.categories)) {
         checkPromises.push(this._runSpellCheck(text));
       }
 
-      // Style Checker
+      // Style Checker with health monitoring
       if ((this.options.engines?.writeGood || this.options.engines?.retext) && 
           this._shouldCheckCategory('style', options.categories)) {
         checkPromises.push(this._runStyleCheck(text));
       }
 
       // Wait for all checks to complete
-      console.log(`⚡ Running ${checkPromises.length} engines in parallel...`);
+      this.logger.debug(`⚡ Running ${checkPromises.length} engines in parallel...`);
       const results = await Promise.allSettled(checkPromises);
       
       // Combine all issues
       const allIssues: Issue[] = [];
       results.forEach((result, index) => {
+        const engineNames = ['nlprule-wasm', 'hunspell', 'style-checker'];
+        const engineName = engineNames[index] || `engine-${index}`;
+        
         if (result.status === 'fulfilled') {
           allIssues.push(...result.value);
-          console.log(`   ✅ Engine ${index + 1}: ${result.value.length} issues`);
+          this.logger.debug(`✅ Engine ${engineName}: ${result.value.length} issues`);
+          this.healthMonitor.reportSuccess(engineName);
         } else {
-          console.warn(`   ❌ Engine ${index + 1} failed:`, result.reason);
+          this.logger.warn(`❌ Engine ${engineName} failed:`, { error: result.reason });
+          this.healthMonitor.reportFailure(engineName, new Error(result.reason));
         }
       });
 
@@ -227,7 +277,7 @@ export class NlpruleRealEngine {
       const result: CheckResult = {
         issues: finalIssues,
         statistics: {
-          engine: 'nlprule-real-engine',
+          engine: 'nlprule-real-engine-phase1',
           processingTime,
           issuesFound: finalIssues.length,
           textLength: text.length,
@@ -243,157 +293,101 @@ export class NlpruleRealEngine {
       this.stats.totalTime += processingTime;
       this.stats.averageTime = this.stats.totalTime / this.stats.totalChecks;
 
-      console.log(`📊 Found ${finalIssues.length} issues in ${processingTime}ms`);
+      this.logger.info(`📊 Found ${finalIssues.length} issues in ${processingTime}ms`);
       
       return result;
 
     } catch (error) {
-      console.error('❌ Error during text checking:', error);
+      this.logger.error('❌ Error during text checking:', { error });
+      this.healthMonitor.reportFailure('nlprule-engine', error instanceof Error ? error : new Error('Unknown error'));
       throw error;
     }
   }
 
   /**
-   * Run the REAL nlprule WASM grammar check
+   * PHASE 1: Run the REAL nlprule WASM grammar check with reliable loader
    */
   private async _runNlpruleGrammarCheck(text: string): Promise<Issue[]> {
     this.stats.engineUsage.grammar++;
     
-    if (typeof window === 'undefined') {
-      // Node.js - use direct import
-             try {
-         console.log('   🔧 Node.js: Using direct nlprule import...');
-         // @ts-ignore - nlprule WASM module has implicit any type
-         const nlpModule = await import('./nlp/pkg/nlprule_wasm.js') as any;
-         const checker = nlpModule.NlpRuleChecker.new();
-         const results = checker.check(text);
-        
-        // Convert results to our Issue format
-        const issues: Issue[] = [];
-        
-        if (results && Array.isArray(results)) {
-          results.forEach((result: any, index: number) => {
-            issues.push({
-              id: `nlprule-${index}`,
-              category: 'grammar',
-              severity: 'error',
-              priority: 1,
-              message: result.message || 'Grammar error',
-              shortMessage: 'Grammar',
-              offset: result.offset || 0,
-              length: result.length || 1,
-              suggestions: result.suggestions || [],
-              rule: {
-                id: result.rule_id || 'NLPRULE',
-                description: result.rule_description || 'nlprule grammar rule'
-              },
-              context: {
-                text: text.slice(Math.max(0, result.offset - 20), result.offset + result.length + 20),
-                offset: Math.max(0, result.offset - 20),
-                length: Math.min(text.length, result.length + 40)
-              },
-              source: 'nlprule-wasm'
-            });
-          });
-        }
-        
-        console.log(`   ✅ nlprule WASM found ${issues.length} grammar issues`);
-        return issues;
-        
-      } catch (error) {
-        console.error('❌ nlprule WASM failed in Node.js:', error);
-        return [];
+    try {
+      // PHASE 1: Use the reliable WASM loader instead of broken worker system
+      if (!this.nlpRuleChecker) {
+        throw new Error('nlprule WASM checker not loaded');
       }
-    }
 
-    // Browser - use worker
-    if (!this.workerReady || !this.grammarWorker) {
-      console.warn('   ⚠️ nlprule WASM worker not ready');
-      return [];
-    }
-
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        reject(new Error('nlprule WASM check timeout'));
-      }, 10000);
-
-      this.grammarWorker!.onmessage = (e) => {
-        clearTimeout(timeout);
-        
-        if (e.data?.error) {
-          reject(new Error(`nlprule WASM error: ${e.data.error}`));
-          return;
-        }
-
-        // Convert worker results to our Issue format
-        const issues: Issue[] = [];
-        const results = e.data;
-        
-        if (results && Array.isArray(results)) {
-          results.forEach((result: any, index: number) => {
-            issues.push({
-              id: `nlprule-${index}`,
-              category: 'grammar',
-              severity: 'error',
-              priority: 1,
-              message: result.message || 'Grammar error',
-              shortMessage: 'Grammar',
-              offset: result.offset || 0,
-              length: result.length || 1,
-              suggestions: result.suggestions || [],
-              rule: {
-                id: result.rule_id || 'NLPRULE',
-                description: result.rule_description || 'nlprule grammar rule'
-              },
-              context: {
-                text: text.slice(Math.max(0, result.offset - 20), result.offset + result.length + 20),
-                offset: Math.max(0, result.offset - 20),
-                length: Math.min(text.length, result.length + 40)
-              },
-              source: 'nlprule-wasm'
-            });
+      // Create a new checker instance for this check
+      const checker = this.nlpRuleChecker.new();
+      const results = checker.check(text);
+      
+      // Convert results to our Issue format
+      const issues: Issue[] = [];
+      
+      if (results && Array.isArray(results)) {
+        results.forEach((result: any, index: number) => {
+          issues.push({
+            id: `nlprule-${index}`,
+            category: 'grammar',
+            severity: 'error',
+            priority: 1,
+            message: result.message || 'Grammar error',
+            shortMessage: 'Grammar',
+            offset: result.offset || 0,
+            length: result.length || 1,
+            suggestions: result.suggestions || [],
+            rule: {
+              id: result.rule_id || 'NLPRULE',
+              description: result.rule_description || 'nlprule grammar rule'
+            },
+            context: {
+              text: text.slice(Math.max(0, result.offset - 20), result.offset + result.length + 20),
+              offset: Math.max(0, result.offset - 20),
+              length: Math.min(text.length, result.length + 40)
+            },
+            source: 'nlprule-wasm'
           });
-        }
-        
-        console.log(`   ✅ nlprule WASM found ${issues.length} grammar issues`);
-        resolve(issues);
-      };
-
-      this.grammarWorker!.onerror = (error) => {
-        clearTimeout(timeout);
-        reject(error);
-      };
-
-      // Send text to worker
-      this.grammarWorker!.postMessage(text);
-    });
+        });
+      }
+      
+      this.logger.debug(`✅ nlprule WASM found ${issues.length} grammar issues`);
+      return issues;
+      
+    } catch (error) {
+      this.logger.error('❌ nlprule WASM grammar check failed:', { error });
+      this.healthMonitor.reportFailure('nlprule-wasm', error instanceof Error ? error : new Error('Unknown error'));
+      throw error; // PHASE 1: No silent fallbacks
+    }
   }
 
   /**
-   * Run spell check
+   * Run spell check with health monitoring
    */
   private async _runSpellCheck(text: string): Promise<Issue[]> {
     this.stats.engineUsage.spell++;
     try {
       const issues = await this.spellChecker.checkSpelling(text);
+      this.healthMonitor.reportSuccess('hunspell');
       return issues;
     } catch (error) {
-      console.error('❌ Spell checker failed:', error);
-      return [];
+      this.logger.error('❌ Spell checker failed:', { error });
+      this.healthMonitor.reportFailure('hunspell', error instanceof Error ? error : new Error('Unknown error'));
+      throw error; // PHASE 1: No silent fallbacks
     }
   }
 
   /**
-   * Run style check
+   * Run style check with health monitoring
    */
   private async _runStyleCheck(text: string): Promise<Issue[]> {
     this.stats.engineUsage.style++;
     try {
       const issues = await this.styleChecker.checkStyle(text);
+      this.healthMonitor.reportSuccess('style-checker');
       return issues;
     } catch (error) {
-      console.error('❌ Style checker failed:', error);
-      return [];
+      this.logger.error('❌ Style checker failed:', { error });
+      this.healthMonitor.reportFailure('style-checker', error instanceof Error ? error : new Error('Unknown error'));
+      throw error; // PHASE 1: No silent fallbacks
     }
   }
 
@@ -422,10 +416,74 @@ export class NlpruleRealEngine {
   }
 
   /**
+   * PHASE 1: Get comprehensive system health status
+   */
+  getSystemHealthStatus() {
+    const wasmStatus = this.wasmLoader.getStatus();
+    const healthReport = this.healthMonitor.getHealthReport();
+    const cacheStats = this.cache.getStats();
+    const assetCacheStats = this.assetLoader.getCacheStats();
+
+    return {
+      // Engine status
+      engines: {
+        nlprule: {
+          status: wasmStatus.isLoaded ? 'loaded' : wasmStatus.isLoading ? 'loading' : 'failed',
+          loadAttempts: wasmStatus.loadAttempts,
+          lastLoadTime: this.stats.lastWasmLoadTime,
+          hasChecker: wasmStatus.hasChecker
+        },
+        hunspell: {
+          status: this.spellChecker.getStatus()?.isInitialized ? 'loaded' : 'failed',
+          health: healthReport.engines.get('hunspell')
+        },
+        styleChecker: {
+          status: this.styleChecker.getStatus()?.isInitialized ? 'loaded' : 'failed',
+          health: healthReport.engines.get('style-checker')
+        }
+      },
+      
+      // Health monitoring
+      health: {
+        overall: healthReport.overall,
+        criticalIssues: healthReport.criticalIssues,
+        recommendations: healthReport.recommendations
+      },
+      
+      // Cache information
+      cache: {
+        grammarCache: cacheStats,
+        assetCache: assetCacheStats
+      },
+      
+      // WASM specific info
+      wasm: {
+        loadAttempts: this.stats.wasmLoadAttempts,
+        lastLoadTime: this.stats.lastWasmLoadTime,
+        moduleLoaded: !!this.wasmModule,
+        checkerAvailable: !!this.nlpRuleChecker
+      },
+      
+      // System statistics
+      stats: {
+        totalChecks: this.stats.totalChecks,
+        averageTime: this.stats.averageTime,
+        engineUsage: this.stats.engineUsage
+      },
+      
+      // Timestamp
+      timestamp: Date.now()
+    };
+  }
+
+  /**
    * Get engine statistics
    */
   getStats() {
-    return { ...this.stats };
+    return { 
+      ...this.stats,
+      healthStatus: this.getSystemHealthStatus()
+    };
   }
 
   /**
@@ -433,6 +491,23 @@ export class NlpruleRealEngine {
    */
   clearCache() {
     this.cache.clear();
+    this.assetLoader.clearMemoryCache();
+    this.logger.info('All caches cleared');
+  }
+
+  /**
+   * PHASE 1: Get health report
+   */
+  getHealthReport() {
+    return this.healthMonitor.getHealthReport();
+  }
+
+  /**
+   * PHASE 1: Reset health monitoring
+   */
+  resetHealthMonitoring() {
+    this.healthMonitor.resetStats();
+    this.logger.info('Health monitoring reset');
   }
 }
 
