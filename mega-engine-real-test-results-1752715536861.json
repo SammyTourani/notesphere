@@ -1,0 +1,691 @@
+{
+  "timestamp": "2025-07-17T01:25:36.861Z",
+  "engineStatus": "real",
+  "results": {
+    "grammar": {
+      "total": 16,
+      "detected": 7,
+      "accuracy": 43.75,
+      "falsePositives": 11,
+      "details": [
+        {
+          "text": "The cats is hungry.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [
+            "You should probably use: are."
+          ],
+          "correct": true,
+          "falsePositives": 1,
+          "category": "grammar",
+          "processingTime": 867
+        },
+        {
+          "text": "Each of the students have finished their homework.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [
+            "Singular subjects like \"each\" should take singular verbs"
+          ],
+          "correct": true,
+          "falsePositives": 1,
+          "category": "grammar",
+          "processingTime": 300
+        },
+        {
+          "text": "Neither John nor Mary were present.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 446
+        },
+        {
+          "text": "The data shows that none of the participants was prepared.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 278
+        },
+        {
+          "text": "The team are working on the project.",
+          "expected": [
+            "subject-verb agreement"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 280
+        },
+        {
+          "text": "Between you and I, this is wrong.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [
+            "Did you mean between you and me?",
+            "Use \"me\" instead of \"I\" after prepositions"
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "grammar",
+          "processingTime": 276
+        },
+        {
+          "text": "Me and my friend went to the store.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [
+            "When referring to yourself and somebody else, put their name first. Also check whether the nominative form I is required here.",
+            "Use \"I\" instead of \"me\" as subject"
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "grammar",
+          "processingTime": 278
+        },
+        {
+          "text": "The teacher gave the book to John and I.",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [
+            "Did you mean me?"
+          ],
+          "correct": true,
+          "falsePositives": 1,
+          "category": "grammar",
+          "processingTime": 273
+        },
+        {
+          "text": "Who did you give the book to?",
+          "expected": [
+            "pronoun case"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 273
+        },
+        {
+          "text": "I have went to the store yesterday.",
+          "expected": [
+            "verb tense"
+          ],
+          "detected": [
+            "Note: went is a past participle of \"wend\". Did you mean gone (past participle of \"go\")?",
+            "Use \"gone\" instead of \"went\" with \"have\""
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "grammar",
+          "processingTime": 343
+        },
+        {
+          "text": "If I was you, I would be careful.",
+          "expected": [
+            "subjunctive mood"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 434
+        },
+        {
+          "text": "I should of known better.",
+          "expected": [
+            "verb tense"
+          ],
+          "detected": [
+            "It's never correct to use 'of' after a modal verb. Use should have, or, in informal register, should've.",
+            "Use \"have\" instead of \"of\""
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "grammar",
+          "processingTime": 478
+        },
+        {
+          "text": "The project will be finish by Friday.",
+          "expected": [
+            "verb tense"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 428
+        },
+        {
+          "text": "I need to buy car.",
+          "expected": [
+            "missing article"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 511
+        },
+        {
+          "text": "The United States is the country.",
+          "expected": [
+            "redundant article"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 491
+        },
+        {
+          "text": "I went to store to buy milk.",
+          "expected": [
+            "missing article"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "grammar",
+          "processingTime": 466
+        }
+      ]
+    },
+    "spelling": {
+      "total": 8,
+      "detected": 8,
+      "accuracy": 100,
+      "falsePositives": 9,
+      "details": [
+        {
+          "text": "I recieved your mesage yesturday.",
+          "expected": [
+            "received",
+            "message",
+            "yesterday"
+          ],
+          "detected": [
+            "\"recieved\" is misspelled",
+            "\"mesage\" is misspelled",
+            "\"yesturday\" is misspelled"
+          ],
+          "correct": true,
+          "falsePositives": 3,
+          "category": "spelling",
+          "processingTime": 637
+        },
+        {
+          "text": "The databse performance is effected by querys.",
+          "expected": [
+            "database",
+            "affected",
+            "queries"
+          ],
+          "detected": [
+            "\"databse\" is misspelled",
+            "\"querys\" is misspelled"
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "spelling",
+          "processingTime": 570
+        },
+        {
+          "text": "This is a neccessary step that will definitly help.",
+          "expected": [
+            "necessary",
+            "definitely"
+          ],
+          "detected": [
+            "\"neccessary\" is misspelled",
+            "\"definitly\" is misspelled"
+          ],
+          "correct": true,
+          "falsePositives": 2,
+          "category": "spelling",
+          "processingTime": 606
+        },
+        {
+          "text": "The occassion calls for immediate action.",
+          "expected": [
+            "occasion"
+          ],
+          "detected": [
+            "\"occassion\" is misspelled"
+          ],
+          "correct": true,
+          "falsePositives": 1,
+          "category": "spelling",
+          "processingTime": 582
+        },
+        {
+          "text": "Their going to loose there minds when they here the news.",
+          "expected": [
+            "they're",
+            "lose",
+            "their",
+            "hear"
+          ],
+          "detected": [
+            "Did you mean lose (= miss, waste, suffer the loss etc.)?"
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "spelling",
+          "processingTime": 492
+        },
+        {
+          "text": "I could of helped you, but you're going to have to except the consequences.",
+          "expected": [
+            "could have",
+            "accept"
+          ],
+          "detected": [
+            "It's never correct to use 'of' after a modal verb. Use could have, or, in informal register, could've."
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "spelling",
+          "processingTime": 485
+        },
+        {
+          "text": "Its important to recieve feedback from others who care about you.",
+          "expected": [
+            "It's",
+            "receive"
+          ],
+          "detected": [
+            "\"recieve\" is misspelled",
+            "Did you mean it's (short for 'it is') instead of 'its' (possessive pronoun)?"
+          ],
+          "correct": true,
+          "falsePositives": 1,
+          "category": "spelling",
+          "processingTime": 577
+        },
+        {
+          "text": "Your going to need to loose some weight.",
+          "expected": [
+            "You're",
+            "lose"
+          ],
+          "detected": [
+            "Did you mean lose (= miss, waste, suffer the loss etc.)?"
+          ],
+          "correct": true,
+          "falsePositives": 0,
+          "category": "spelling",
+          "processingTime": 467
+        }
+      ]
+    },
+    "style": {
+      "total": 9,
+      "detected": 0,
+      "accuracy": 0,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "Due to the fact that we need to think outside the box, we should separate the students who performed a lot better than the others.",
+          "expected": [
+            "wordiness"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 537
+        },
+        {
+          "text": "In order to achieve better results, we need to accommodate their needs more effectively.",
+          "expected": [
+            "wordiness"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 477
+        },
+        {
+          "text": "The implementation of the aforementioned methodology necessitates the utilization of sophisticated computational algorithms.",
+          "expected": [
+            "wordiness",
+            "complexity"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 476
+        },
+        {
+          "text": "At this point in time, we are in the process of considering the various different options.",
+          "expected": [
+            "wordiness"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 456
+        },
+        {
+          "text": "The report was written by John and was reviewed by the committee.",
+          "expected": [
+            "passive voice"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 273
+        },
+        {
+          "text": "The data was analyzed and conclusions were drawn.",
+          "expected": [
+            "passive voice"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 270
+        },
+        {
+          "text": "The meeting will be held by the team.",
+          "expected": [
+            "passive voice"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 274
+        },
+        {
+          "text": "The aforementioned implementation necessitates the utilization of sophisticated computational methodologies.",
+          "expected": [
+            "readability",
+            "complexity"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 282
+        },
+        {
+          "text": "The utilization of aforementioned methodologies is imperative for the optimization of operational efficiency.",
+          "expected": [
+            "readability",
+            "complexity"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "style",
+          "processingTime": 282
+        }
+      ]
+    },
+    "punctuation": {
+      "total": 5,
+      "detected": 0,
+      "accuracy": 0,
+      "falsePositives": 1,
+      "details": [
+        {
+          "text": "I went to the store, I bought some milk.",
+          "expected": [
+            "comma splice"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "punctuation",
+          "processingTime": 307
+        },
+        {
+          "text": "The weather is nice today, we should go for a walk.",
+          "expected": [
+            "comma splice"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "punctuation",
+          "processingTime": 278
+        },
+        {
+          "text": "The cats toy is missing.",
+          "expected": [
+            "apostrophe"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "punctuation",
+          "processingTime": 276
+        },
+        {
+          "text": "Its a beautiful day.",
+          "expected": [
+            "apostrophe"
+          ],
+          "detected": [
+            "Did you mean it's (short for 'it is') instead of 'its' (possessive pronoun)?"
+          ],
+          "correct": false,
+          "falsePositives": 1,
+          "category": "punctuation",
+          "processingTime": 279
+        },
+        {
+          "text": "The students books are on the desk.",
+          "expected": [
+            "apostrophe"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "punctuation",
+          "processingTime": 272
+        }
+      ]
+    },
+    "inclusivity": {
+      "total": 3,
+      "detected": 0,
+      "accuracy": 0,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "Each student should bring his book to class.",
+          "expected": [
+            "gender-neutral language"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "inclusivity",
+          "processingTime": 286
+        },
+        {
+          "text": "The chairman will address the committee.",
+          "expected": [
+            "gender-neutral language"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "inclusivity",
+          "processingTime": 276
+        },
+        {
+          "text": "Every employee must submit his report.",
+          "expected": [
+            "gender-neutral language"
+          ],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "inclusivity",
+          "processingTime": 273
+        }
+      ]
+    },
+    "edgeCases": {
+      "total": 5,
+      "detected": 0,
+      "accuracy": 0,
+      "falsePositives": 0,
+      "details": [
+        {
+          "text": "The API endpoint returns a 404 error when the user_id parameter is null or undefined.",
+          "expected": [],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "edge-cases",
+          "processingTime": 345
+        },
+        {
+          "text": "The function accepts a callback parameter and executes it asynchronously.",
+          "expected": [],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "edge-cases",
+          "processingTime": 271
+        },
+        {
+          "text": "The database query SELECT * FROM users WHERE id = ? returns user data.",
+          "expected": [],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "edge-cases",
+          "processingTime": 338
+        },
+        {
+          "text": "The wind whispered through the ancient trees, carrying secrets of forgotten times.",
+          "expected": [],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "edge-cases",
+          "processingTime": 274
+        },
+        {
+          "text": "She danced like nobody was watching, her heart beating to the rhythm of possibility.",
+          "expected": [],
+          "detected": [],
+          "correct": false,
+          "falsePositives": 0,
+          "category": "edge-cases",
+          "processingTime": 274
+        }
+      ]
+    },
+    "falsePositives": {
+      "total": 5,
+      "falsePositives": 0,
+      "rate": 0,
+      "details": [
+        {
+          "text": "The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the alphabet.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "She carefully reviewed the document before submitting it to her supervisor.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "The research findings indicate a significant correlation between exercise and mental health outcomes.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "The API endpoint returns a 404 error when the user_id parameter is null or undefined.",
+          "detected": [],
+          "falsePositiveCount": 0
+        },
+        {
+          "text": "JavaScript is a programming language that enables interactive web pages.",
+          "detected": [],
+          "falsePositiveCount": 0
+        }
+      ]
+    },
+    "performance": {
+      "short": {
+        "wordCount": 4,
+        "averageTime": 273.6,
+        "minTime": 269,
+        "maxTime": 285,
+        "times": [
+          271,
+          285,
+          272,
+          269,
+          271
+        ]
+      },
+      "medium": {
+        "wordCount": 28,
+        "averageTime": 276,
+        "minTime": 274,
+        "maxTime": 279,
+        "times": [
+          277,
+          274,
+          276,
+          274,
+          279
+        ]
+      },
+      "long": {
+        "wordCount": 106,
+        "averageTime": 407.8,
+        "minTime": 392,
+        "maxTime": 448,
+        "times": [
+          448,
+          405,
+          393,
+          392,
+          401
+        ]
+      },
+      "cacheEfficiency": {}
+    },
+    "overall": {
+      "precision": 0.4166666666666667,
+      "recall": 0.29411764705882354,
+      "f1Score": 0.3448275862068966
+    }
+  },
+  "summary": {
+    "f1Score": 34.48275862068966,
+    "precision": 41.66666666666667,
+    "recall": 29.411764705882355,
+    "falsePositiveRate": 0,
+    "averageProcessingTime": 319.1333333333334
+  }
+}

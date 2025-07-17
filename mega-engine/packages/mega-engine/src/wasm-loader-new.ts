@@ -3,7 +3,7 @@
  * Handles proper WASM initialization for both browser and Node.js environments
  */
 
-import type { WasmEngineStatus } from './types.js';
+import type { EngineStatus } from './types.js';
 
 export class WasmLoader {
   private isLoaded = false;
@@ -63,12 +63,9 @@ export class WasmLoader {
   /**
    * Get the current status of the WASM loader
    */
-  getStatus(): WasmEngineStatus {
+  getStatus(): EngineStatus {
     return {
-      isLoaded: this.isLoaded,
-      isLoading: this.isLoading,
-      hasChecker: this.NlpRuleChecker !== null,
-      wasmSize: this.wasmBinaryCache?.byteLength
+      isInitialized: this.isLoaded
     };
   }
 

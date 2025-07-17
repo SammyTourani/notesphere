@@ -3,7 +3,7 @@
  * Uses a combination of word lists and smart algorithms
  */
 
-import type { Issue, SpellCheckResult, InitOptions } from './types.js';
+import type { Issue, CheckResult, InitOptions } from './types.js';
 import { loadTextAsset } from './asset-loader.js';
 import { v4 as uuidv4 } from 'uuid';
 
