@@ -23,6 +23,62 @@ import { ProfessionalHunspellChecker } from './spell-checker-nspell.js';
 import { StyleChecker } from './style-checker.js';
 import { SmartCache } from './cache.js';
 import { v4 as uuidv4 } from 'uuid';
+import { nodeWasmLoader } from '../dist/node-wasm-loader.js';
+import fs from 'fs';
+import path from 'path';
+
+// Singleton for nlprule WASM + dictionary
+class GrammarWasm {
+  private static instance: GrammarWasm;
+  private wasmModule: any = null;
+  private isInitialized = false;
+  private cachedChecker: any = null; // Cache the checker instance
+
+  private constructor() {}
+
+  static getInstance(): GrammarWasm {
+    if (!GrammarWasm.instance) {
+      GrammarWasm.instance = new GrammarWasm();
+    }
+    return GrammarWasm.instance;
+  }
+
+  async init(): Promise<void> {
+    if (this.isInitialized) return;
+    const dictPath = path.resolve(__dirname, '../../dist/nlp/pkg/en.bin');
+    const dictBuffer = fs.readFileSync(dictPath);
+    this.wasmModule = await nodeWasmLoader.loadWasmModule(
+      './nlp/pkg/nlprule_wasm_bg.wasm',
+      './nlp/pkg/nlprule_wasm_node.js',
+      { dictBuffer }
+    );
+    this.isInitialized = true;
+    
+    // Create and cache the checker instance
+    this.cachedChecker = this.wasmModule.NlpRuleChecker.new();
+    
+    // Self-test
+    try {
+      const testText = 'Between you and I, this are a test.';
+      const result = this.cachedChecker.check(testText);
+      console.log('[GrammarWasm Self-Test] check("' + testText + '"):', result);
+      if (Array.isArray(result) && result.length > 0) {
+        console.log('[GrammarWasm Self-Test] ✅ Grammar errors detected:', result.map(r => r.message));
+      } else {
+        console.warn('[GrammarWasm Self-Test] ❌ No grammar errors detected!');
+      }
+    } catch (e) {
+      console.error('[GrammarWasm Self-Test] ❌ Error:', e);
+    }
+  }
+
+  getChecker() {
+    if (!this.isInitialized || !this.wasmModule || !this.cachedChecker) {
+      throw new Error('GrammarWasm not initialized or checker not available');
+    }
+    return this.cachedChecker; // Return the cached instance
+  }
+}
 
 export class NlpruleRealEngine {
   // PHASE 1: New reliable components
@@ -139,29 +195,12 @@ export class NlpruleRealEngine {
    */
   private async initNlpruleGrammar(): Promise<boolean> {
     try {
-      this.stats.wasmLoadAttempts++;
-      this.stats.lastWasmLoadTime = Date.now();
-      
-      this.logger.info('🔧 Loading nlprule WASM with reliable loader...');
-      
-      // PHASE 1: Use the reliable WASM loader instead of broken worker system
-      this.logger.debug('Loading WASM module...');
-      const wasmResult = await this.wasmLoader.load();
-      this.wasmModule = wasmResult;
-      this.nlpRuleChecker = wasmResult.NlpRuleChecker;
-      this.logger.debug('WASM module loaded successfully');
-      
-      this.logger.info('✅ nlprule WASM loaded successfully with reliable loader');
-      this.healthMonitor.reportSuccess('nlprule-wasm');
-      
+      await GrammarWasm.getInstance().init();
+      this.logger.info('✅ GrammarWasm singleton initialized');
       return true;
-
-    } catch (error) {
-      this.logger.error('❌ Failed to initialize nlprule WASM grammar engine:', { error });
-      this.healthMonitor.reportFailure('nlprule-wasm', error instanceof Error ? error : new Error('Unknown error'));
-      
-      // PHASE 1: No silent fallbacks - throw the error
-      throw new Error(`nlprule WASM initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } catch (e) {
+      this.logger.error('❌ Failed to initialize GrammarWasm:', e);
+      return false;
     }
   }
 
@@ -305,26 +344,36 @@ export class NlpruleRealEngine {
   }
 
   /**
+   * Alias for check() method to maintain compatibility with test suite
+   */
+  async checkText(text: string, options: CheckOptions = {}): Promise<CheckResult> {
+    return this.check(text, options);
+  }
+
+  /**
    * PHASE 1: Run the REAL nlprule WASM grammar check with reliable loader
    */
   private async _runNlpruleGrammarCheck(text: string): Promise<Issue[]> {
     this.stats.engineUsage.grammar++;
     
     try {
-      // PHASE 1: Use the reliable WASM loader instead of broken worker system
-      if (!this.nlpRuleChecker) {
-        throw new Error('nlprule WASM checker not loaded');
-      }
-
-      // Create a new checker instance for this check
-      const checker = this.nlpRuleChecker.new();
-      const results = checker.check(text);
+      // Use GrammarWasm singleton for checker
+      const checker = GrammarWasm.getInstance().getChecker();
+      
+      // Before each check:
+      console.log('[DEBUG] [MegaEngine] Calling nlprule.check with text:', JSON.stringify(text));
+      const ptr = checker.__wbg_ptr;
+      const len = text.length;
+      console.log('[DEBUG] [MegaEngine] Pointer info:', { ptr, len });
+      
+      const result = checker.check(text);
+      console.log('[DEBUG] [MegaEngine] nlprule.check returned:', result);
       
       // Convert results to our Issue format
       const issues: Issue[] = [];
       
-      if (results && Array.isArray(results)) {
-        results.forEach((result: any, index: number) => {
+      if (result && Array.isArray(result)) {
+        result.forEach((result: any, index: number) => {
           issues.push({
             id: `nlprule-${index}`,
             category: 'grammar',

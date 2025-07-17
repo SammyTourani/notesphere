@@ -12,6 +12,9 @@
 import type { WasmLoadStatus, WasmLoadOptions, WasmLoadResult } from './types.js';
 import { Logger } from './logger.js';
 import { EngineHealthMonitor } from './engine-health-monitor.js';
+import { nodeWasmLoader } from '../dist/node-wasm-loader.js';
+import fs from 'fs';
+import path from 'path';
 
 export class ReliableWasmLoader {
   private static instance: ReliableWasmLoader;
@@ -123,30 +126,48 @@ export class ReliableWasmLoader {
   }
 
   /**
-   * Strategy 1: Direct import from compiled WASM
+   * Strategy 1: Direct import from compiled WASM with Node.js compatibility
    */
   private async loadFromDirectImport(): Promise<any> {
     try {
-      this.logger.debug('Trying direct import from nlprule_wasm.js...');
-      
-      // PHASE 1: Use the correct WASM file that actually exists
-      const wasmModule = await import('./nlp/pkg/nlprule_wasm.js');
-      
-      // Initialize the WASM module
-      this.logger.debug('Initializing WASM module...');
-      await wasmModule.default();
-      
+      this.logger.debug('Trying Node.js WASM loader with dictionary loading...');
+      // Load the dictionary data
+      const dictPath = path.resolve(__dirname, '../dist/nlp/pkg/en.bin');
+      this.logger.debug('Loading dictionary from: ' + dictPath);
+      const dictBuffer = fs.readFileSync(dictPath);
+      this.logger.debug('Dictionary loaded: ' + dictBuffer.length + ' bytes');
+      // Load the WASM module with dictionary data
+      const wasmModule = await nodeWasmLoader.loadWasmModule(
+        './nlp/pkg/nlprule_wasm_bg.wasm',
+        './nlp/pkg/nlprule_wasm_node.js',
+        { dictBuffer }
+      );
+      // Self-test: run a grammar check
+      try {
+        this.logger.debug('Running ReliableWasmLoader self-test...');
+        const checker = wasmModule.NlpRuleChecker.new();
+        const testText = 'Between you and I, this are a test.';
+        const result = checker.check(testText);
+        this.logger.info('[Self-Test] NlpRuleChecker.check("' + testText + '") returned:', result);
+        if (Array.isArray(result) && result.length > 0) {
+          this.logger.info('[Self-Test] ✅ Grammar errors detected:', result.map(r => r.message));
+        } else {
+          this.logger.warn('[Self-Test] ❌ No grammar errors detected!');
+        }
+      } catch (selfTestError) {
+        this.logger.error('[Self-Test] ❌ Error running NlpRuleChecker self-test:', selfTestError);
+      }
       if (wasmModule.NlpRuleChecker) {
         this.wasmModule = wasmModule;
         this.status.isLoaded = true;
         this.status.hasChecker = true;
-        this.logger.info('✅ Direct import successful');
+        this.logger.info('✅ Node.js WASM loader with dictionary successful');
         return wasmModule;
       } else {
-        throw new Error('NlpRuleChecker not found in imported module');
+        throw new Error('NlpRuleChecker not found in Node.js WASM module');
       }
     } catch (error) {
-      this.logger.warn('Direct import failed:', { error });
+      this.logger.warn('Node.js WASM loader failed:', { error });
       throw error;
     }
   }
