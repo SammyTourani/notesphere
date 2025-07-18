@@ -30,7 +30,7 @@ export abstract class BaseGrammarEngine implements GrammarEngine {
   public readonly capabilities: EngineCapability[];
   public readonly mode: EngineMode;
 
-  protected initialized: boolean = false;
+  public initialized: boolean = false;
   protected processingCount: number = 0;
   protected totalProcessingTime: number = 0;
   protected lastError?: Error;
