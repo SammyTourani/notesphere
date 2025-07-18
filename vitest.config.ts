@@ -21,7 +21,8 @@ export default defineConfig({
       '@': '/src'
     }
   },
-  css: {
-    postcss: false
+  css: false,
+  define: {
+    'process.env.NODE_ENV': '"test"'
   }
 });

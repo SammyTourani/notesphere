@@ -360,7 +360,7 @@ export class MegsErrorImpl extends Error implements MegsError {
   public readonly engineId?: string;
   public readonly recoverable: boolean;
   public readonly details?: any;
-  public override cause?: Error;
+  public cause?: Error;
 
   constructor(
     type: ErrorType,
