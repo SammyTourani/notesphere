@@ -15,12 +15,28 @@
  */
 
 import AdvancedGrammarService from './AdvancedGrammarService.js';
+// import LanguageToolService from './LanguageToolService.js'; // TODO: Create this service
+// import GrammarCostTracker from './GrammarCostTracker.js'; // TODO: Create this service
 import { updateGrammarDecorations } from '../extensions/GrammarExtension.js';
 
 class UnifiedGrammarController {
   constructor() {
     this.advancedGrammarService = new AdvancedGrammarService();
+    // Stub for missing LanguageToolService
+    this.languageToolService = { 
+      isAvailable: () => false,
+      initialize: () => Promise.resolve(false),
+      checkText: () => Promise.resolve([]) 
+    };
+    // Stub for missing GrammarCostTracker
+    this.costTracker = { 
+      trackCheck: () => {},
+      getCost: () => 0
+    };
     this.isInitialized = false;
+    
+    // Grammar tier (1 = WASM, 2 = LanguageTool, 3 = GPT-4)
+    this.currentTier = 1;
     
     // State management
     this.currentIssues = [];
@@ -65,16 +81,34 @@ class UnifiedGrammarController {
     try {
       console.log('🚀 Initializing UnifiedGrammarController...');
       
-      // Initialize AdvancedGrammarService
-      const initialized = await this.advancedGrammarService.initialize();
-      if (!initialized) {
+      // Initialize Tier 1 (WASM - Advanced Grammar Service)
+      const tier1Initialized = await this.advancedGrammarService.initialize();
+      if (!tier1Initialized) {
         console.warn('⚠️ AdvancedGrammarService initialization failed, using fallback mode');
       }
       
-      this.isInitialized = true;
-      console.log('✅ UnifiedGrammarController ready');
+      // Initialize Tier 2 (LanguageTool)
+      const tier2Initialized = await this.languageToolService.initialize();
+      if (tier2Initialized) {
+        console.log('✅ LanguageTool service available (Tier 2)');
+      } else {
+        console.log('⚠️ LanguageTool not configured, only Tier 1 available');
+      }
       
-      this.emit('initialized', { success: true });
+      // Load saved tier preference
+      const savedTier = localStorage.getItem('grammar_tier');
+      if (savedTier) {
+        this.currentTier = parseInt(savedTier, 10);
+      }
+      
+      this.isInitialized = true;
+      console.log(`✅ UnifiedGrammarController ready (Tier ${this.currentTier})`);
+      
+      this.emit('initialized', { 
+        success: true,
+        tier: this.currentTier,
+        tier2Available: tier2Initialized
+      });
       return true;
     } catch (error) {
       console.error('❌ UnifiedGrammarController initialization failed:', error);
@@ -242,7 +276,7 @@ class UnifiedGrammarController {
   }
 
   /**
-   * Perform the actual grammar check
+   * Perform the actual grammar check using selected tier
    */
   async performGrammarCheck(content, context = {}) {
     if (!this.isEnabled || this.isProcessing) {
@@ -254,35 +288,64 @@ class UnifiedGrammarController {
     this.isProcessing = true;
     
     try {
-      console.log('🔍 Performing grammar check...');
-      this.emit('checkStarted', { content: content.substring(0, 50) + '...', context });
-      
-      // Use AdvancedGrammarService for detection
-      const result = await this.advancedGrammarService.checkText(content, {
-        categories: ['grammar', 'spelling', 'style', 'punctuation'],
-        language: 'en-US'
+      console.log(`🔍 Performing Tier ${this.currentTier} grammar check...`);
+      this.emit('checkStarted', { 
+        content: content.substring(0, 50) + '...', 
+        context,
+        tier: this.currentTier 
       });
       
-      // Extract and normalize issues
-      const issues = this.normalizeIssues(result.issues || result || [], content);
+      let allIssues = [];
+      
+      // Tier 1: Always run WASM for instant feedback
+      if (this.currentTier >= 1) {
+        const tier1Result = await this.advancedGrammarService.checkText(content, {
+          categories: ['grammar', 'spelling', 'style', 'punctuation'],
+          language: 'en-US'
+        });
+        allIssues = this.normalizeIssues(tier1Result.issues || tier1Result || [], content);
+        console.log(`✅ Tier 1 (WASM): ${allIssues.length} issues in ${Date.now() - startTime}ms`);
+      }
+      
+      // Tier 2: Add LanguageTool for enhanced accuracy
+      if (this.currentTier >= 2 && this.languageToolService.isAvailable()) {
+        const tier2Issues = await this.languageToolService.checkText(content, {
+          language: 'en-US',
+          level: 'picky'
+        });
+        
+        // Track cost
+        this.costTracker.trackCheck(2, content.length);
+        
+        // Merge and deduplicate issues
+        allIssues = this.mergeIssues(allIssues, tier2Issues);
+        console.log(`✅ Tier 2 (LanguageTool): ${tier2Issues.length} new issues, ${allIssues.length} total`);
+      }
+      
+      // Tier 3: GPT-4 Premium (future implementation)
+      if (this.currentTier >= 3) {
+        // This will be handled by GPT4GrammarService when user upgrades
+        console.log('ℹ️ Tier 3 (GPT-4) requires premium subscription');
+      }
       
       // Update decorations in the editor
-      this.updateDecorations(issues);
+      this.updateDecorations(allIssues);
       
       // Update statistics
       const processingTime = Date.now() - startTime;
-      this.updateStats(processingTime, issues.length);
+      this.updateStats(processingTime, allIssues.length);
       
-      console.log(`✅ Grammar check completed: ${issues.length} issues found in ${processingTime}ms`);
+      console.log(`✅ Grammar check completed: ${allIssues.length} issues in ${processingTime}ms`);
       
       this.emit('checkCompleted', {
-        issues,
+        issues: allIssues,
         processingTime,
         context,
-        stats: this.stats
+        stats: this.stats,
+        tier: this.currentTier
       });
       
-      return issues;
+      return allIssues;
       
     } catch (error) {
       console.error('❌ Grammar check failed:', error);
@@ -292,6 +355,88 @@ class UnifiedGrammarController {
     } finally {
       this.isProcessing = false;
     }
+  }
+  
+  /**
+   * Merge issues from multiple tiers and remove duplicates
+   */
+  mergeIssues(tier1Issues, tier2Issues) {
+    const merged = [...tier1Issues];
+    
+    for (const issue2 of tier2Issues) {
+      // Check if this issue overlaps with any existing issue
+      const isDuplicate = tier1Issues.some(issue1 => {
+        // Same position and similar message = duplicate
+        const samePosition = Math.abs(issue1.offset - issue2.offset) <= 2 &&
+                           Math.abs(issue1.length - issue2.length) <= 2;
+        const similarMessage = issue1.message.toLowerCase().includes(issue2.message.toLowerCase().split(' ')[0]);
+        
+        return samePosition && similarMessage;
+      });
+      
+      if (!isDuplicate) {
+        merged.push(issue2);
+      }
+    }
+    
+    // Sort by position
+    return merged.sort((a, b) => a.offset - b.offset);
+  }
+  
+  /**
+   * Set grammar checking tier
+   */
+  setTier(tier) {
+    if (tier < 1 || tier > 3) {
+      console.warn('Invalid tier:', tier);
+      return false;
+    }
+    
+    // Check if tier is available
+    if (tier === 2 && !this.languageToolService.isAvailable()) {
+      console.warn('Tier 2 (LanguageTool) not available');
+      return false;
+    }
+    
+    if (tier === 3) {
+      // Redirect to premium page
+      this.emit('premiumRequired', { tier: 3 });
+      return false;
+    }
+    
+    this.currentTier = tier;
+    localStorage.setItem('grammar_tier', tier.toString());
+    
+    console.log(`✅ Grammar tier set to ${tier}`);
+    this.emit('tierChanged', { tier });
+    
+    // Re-check current content with new tier
+    if (this.editor) {
+      const content = this.getEditorContent();
+      if (content && content.trim().length > 0) {
+        this.scheduleGrammarCheck(content, { reason: 'tier_changed' });
+      }
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Get current tier
+   */
+  getTier() {
+    return this.currentTier;
+  }
+  
+  /**
+   * Get available tiers
+   */
+  getAvailableTiers() {
+    return {
+      tier1: true,
+      tier2: this.languageToolService.isAvailable(),
+      tier3: false // Premium not yet implemented
+    };
   }
 
   /**

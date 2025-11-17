@@ -1,0 +1,55 @@
+# Docker Compose Configuration for NoteSphere
+# Provides development environment with hot reload
+
+version: '3.8'
+
+services:
+  # Development server with hot reload
+  notesphere-dev:
+    build:
+      context: .
+      target: development
+    container_name: notesphere-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./index.html:/app/index.html
+      - ./vite.config.js:/app/vite.config.js
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+      - ./package.json:/app/package.json
+      # Prevent overwriting node_modules
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    command: npm run dev -- --host 0.0.0.0
+    stdin_open: true
+    tty: true
+    networks:
+      - notesphere-network
+
+  # Production build (optional - for testing production builds)
+  notesphere-prod:
+    build:
+      context: .
+      target: production
+    container_name: notesphere-prod
+    ports:
+      - "8080:80"
+    networks:
+      - notesphere-network
+    profiles:
+      - production
+
+networks:
+  notesphere-network:
+    driver: bridge
+
+# Volume for persistent node_modules (faster rebuilds)
+volumes:
+  node_modules:

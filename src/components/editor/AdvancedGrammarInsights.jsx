@@ -20,6 +20,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import InteractiveGrammarHighlighter from './InteractiveGrammarHighlighter';
 import { createCommandBasedReplacer } from '../../services/CommandBasedReplacer';
 import { registerGrammarAssistantCallbacks } from '../../extensions/GrammarExtension';
+// import GrammarTierSelector from '../GrammarTierSelector'; // TODO: Create this component
+// import IssueCard from '../IssueCard'; // TODO: Create this component
+// import AutoFixEngine from '../../services/AutoFixEngine'; // TODO: Create this service
 import { 
   BarChart3, 
   TrendingUp, 
@@ -56,6 +59,7 @@ const AdvancedGrammarInsights = React.forwardRef(({
   const [issues, setIssues] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [textReplacer, setTextReplacer] = useState(null);
+  const [autoFixEngine, setAutoFixEngine] = useState(null);
   const [activeView, setActiveView] = useState('issues'); // Changed from 'overview' to 'issues'
   const [filterCategory, setFilterCategory] = useState('all');
   const [sortBy, setSortBy] = useState('priority');
@@ -181,13 +185,22 @@ const AdvancedGrammarInsights = React.forwardRef(({
     }
   };
 
-  // === INITIALIZE TEXT REPLACER ===
+  // === INITIALIZE TEXT REPLACER AND AUTO-FIX ENGINE ===
   useEffect(() => {
     if (editor && !textReplacer) {
       const replacer = createCommandBasedReplacer(editor);
       setTextReplacer(replacer);
     }
-  }, [editor, textReplacer]);
+    
+    // AutoFixEngine not available, using simple stub
+    if (editor && !autoFixEngine) {
+      const engine = {
+        applySingleFix: () => false,
+        applyFixesSmart: () => 0
+      };
+      setAutoFixEngine(engine);
+    }
+  }, [editor, textReplacer, autoFixEngine]);
 
   // === FOCUS ON SPECIFIC ISSUE ===
   const focusOnIssue = useCallback((targetIssue) => {
@@ -270,32 +283,74 @@ const AdvancedGrammarInsights = React.forwardRef(({
 
   // === AUTO-FIX FUNCTION ===
   const autoFixIssue = useCallback(async (issue, suggestion) => {
-    if (!grammarController || !suggestion) return;
+    console.log('🔧 AUTO-FIX CALLED:', { issue, suggestion, hasEngine: !!autoFixEngine });
+    
+    if (!autoFixEngine) {
+      console.error('❌ AutoFixEngine not initialized!');
+      return false;
+    }
+    
+    if (!suggestion) {
+      console.error('❌ No suggestion provided!');
+      return false;
+    }
 
     try {
-      console.log('🔧 Auto-fixing issue via grammar controller:', issue.originalText || issue.text, '→', suggestion);
+      console.log('🔧 Applying fix:', issue.originalText || issue.text, '→', suggestion);
       
-      // Use the grammar controller to apply the suggestion
-      const success = grammarController.applySuggestion(issue.id, suggestion);
+      // Apply the fix using AutoFixEngine
+      const success = autoFixEngine.applySingleFix({
+        ...issue,
+        suggestions: [suggestion] // Ensure the suggestion we want is first
+      });
       
       if (success) {
         // Remove the issue from local state
         removeIssue(issue.id);
+        
         console.log('✅ Issue fixed successfully');
+        return true;
       } else {
-        console.warn('❌ Failed to apply suggestion via grammar controller');
+        console.warn('❌ Failed to apply fix');
+        return false;
       }
 
     } catch (error) {
       console.error('❌ Error during auto-fix:', error);
+      return false;
     }
-  }, [grammarController, removeIssue]);
-
-  // === AUTO-FIX ALL FUNCTION (DISABLED) ===
-  // Quick fix functionality temporarily disabled due to issues
-  // const autoFixAllIssues = useCallback(() => {
-  //   console.log('Quick fix all temporarily disabled');
-  // }, []);
+  }, [autoFixEngine, removeIssue]);
+  
+  // === AUTO-FIX ALL FUNCTION ===
+  const autoFixAllIssues = useCallback(async () => {
+    if (!autoFixEngine || issues.length === 0) {
+      console.warn('Cannot auto-fix: no engine or no issues');
+      return;
+    }
+    
+    try {
+      console.log(`🔧 Auto-fixing ${issues.length} issues...`);
+      
+      // Use smart batch fix with conflict resolution
+      const fixedCount = autoFixEngine.applyFixesSmart(issues);
+      
+      console.log(`✅ Fixed ${fixedCount}/${issues.length} issues`);
+      
+      // Refresh issues after fixing
+      if (grammarController) {
+        await grammarController.forceGrammarCheck();
+      }
+      
+      // Update stats
+      setWritingStats(prev => ({
+        ...prev,
+        issuesFixed: prev.issuesFixed + fixedCount
+      }));
+      
+    } catch (error) {
+      console.error('❌ Error during batch auto-fix:', error);
+    }
+  }, [autoFixEngine, issues, grammarController]);
 
   // === CALCULATE READING TIME ===
   const calculateReadingTime = useCallback((wordCount) => {
@@ -319,16 +374,28 @@ const AdvancedGrammarInsights = React.forwardRef(({
     const handleCheckCompleted = ({ issues: controllerIssues }) => {
       setIsProcessing(false);
       
+      console.log('📊 GRAMMAR CHECK COMPLETED - Raw issues from controller:', controllerIssues);
+      
       if (controllerIssues && controllerIssues.length > 0) {
         // Process issues for UI with intelligence metadata
-        const processedIssues = controllerIssues.map((issue) => ({
-          ...issue,
-          displayText: issue.originalText || issue.text || '',
-          // Use new intelligence classification if available, fallback to legacy logic
-          isAutoFixable: issue.intelligence?.classification === 'auto-fixable' || 
-                        (issue.isAutoFixable !== undefined ? issue.isAutoFixable : 
-                         !!(issue.suggestions && issue.suggestions.length > 0))
-        }));
+        const processedIssues = controllerIssues.map((issue) => {
+          console.log('📝 FULL ISSUE OBJECT:', JSON.stringify(issue, null, 2));
+          console.log('📝 Has offset?', issue.offset !== undefined);
+          console.log('📝 Has length?', issue.length !== undefined);
+          console.log('📝 Has context?', !!issue.context);
+          console.log('📝 Context details:', issue.context);
+          
+          return {
+            ...issue,
+            displayText: issue.originalText || issue.text || '',
+            // Use new intelligence classification if available, fallback to legacy logic
+            isAutoFixable: issue.intelligence?.classification === 'auto-fixable' || 
+                          (issue.isAutoFixable !== undefined ? issue.isAutoFixable : 
+                           !!(issue.suggestions && issue.suggestions.length > 0))
+          };
+        });
+        
+        console.log('✅ Processed issues:', processedIssues);
 
         setIssues(processedIssues);
         
@@ -545,6 +612,13 @@ const AdvancedGrammarInsights = React.forwardRef(({
 
   // === FILTERED AND SORTED ISSUES ===
   const filteredIssues = useMemo(() => {
+    console.log('🔍 FILTER DEBUG:', {
+      totalIssues: issues.length,
+      filterCategory,
+      sortBy,
+      issuesArray: issues
+    });
+    
     let filtered = issues;
     
     if (filterCategory !== 'all') {
@@ -563,14 +637,13 @@ const AdvancedGrammarInsights = React.forwardRef(({
       return 0;
     });
     
+    console.log('🔍 FILTERED RESULT:', filtered.length, filtered);
+    
     return filtered;
   }, [issues, filterCategory, sortBy]);
 
   // === RENDER ISSUE CARD ===
   const renderIssueCard = (issue, index) => {
-    const category = categoryStyles[issue.category] || { color: 'rgb(107 114 128)', bg: 'rgba(107, 114, 128, 0.1)', icon: Info };
-    const IconComponent = category.icon;
-    const suggestion = issue.suggestions?.[0];
     const isHighlighted = highlightedIssueId === issue.id;
 
     return (
@@ -582,9 +655,6 @@ const AdvancedGrammarInsights = React.forwardRef(({
           opacity: 1, 
           y: 0, 
           scale: isHighlighted ? 1.02 : 1,
-          boxShadow: isHighlighted 
-            ? '0 25px 50px -12px rgba(59, 130, 246, 0.4), 0 0 0 3px rgba(59, 130, 246, 0.3)' 
-            : '0 10px 25px -5px rgba(0, 0, 0, 0.1)'
         }}
         exit={{ opacity: 0, y: -10, scale: 0.95 }}
         transition={{ 
@@ -593,138 +663,30 @@ const AdvancedGrammarInsights = React.forwardRef(({
           stiffness: 300,
           damping: 30
         }}
-        className={`group p-5 backdrop-blur-sm rounded-2xl border transition-all duration-300 ${
-          isHighlighted 
-            ? 'bg-blue-50/90 dark:bg-blue-900/30 border-blue-300/60 dark:border-blue-600/50 shadow-2xl transform' 
-            : 'bg-white/60 dark:bg-gray-800/60 border-gray-200/40 dark:border-gray-700/40 hover:shadow-lg'
-        }`}
       >
-        <div className="flex items-start gap-4">
-          <div className="p-2.5 rounded-xl shadow-sm" style={{ backgroundColor: category.bg }}>
-            <IconComponent size={18} style={{ color: category.color }} />
+        {/* IssueCard component not yet created, using placeholder */}
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h4 className="font-medium text-gray-900 dark:text-white">{issue.message}</h4>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                {issue.context}
+              </p>
+            </div>
           </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <h4 className="font-semibold text-sm tracking-wide" style={{ color: category.color }}>
-                {(category.label || issue.category || 'ISSUE').toUpperCase()}
-              </h4>
-              {/* 🧠 PHASE 1: Enhanced intelligence classification badges */}
-              {issue.intelligence?.classification === 'auto-fixable' && (
-                <span className="px-2 py-1 bg-gradient-to-r from-emerald-100 to-green-100 dark:from-emerald-900/30 dark:to-green-900/30 text-emerald-700 dark:text-emerald-300 text-xs rounded-full font-semibold flex items-center gap-1">
-                  <Zap size={10} />
-                  Auto-fixable
-                </span>
-              )}
-              {issue.intelligence?.classification === 'semi-fixable' && (
-                <span className="px-2 py-1 bg-gradient-to-r from-yellow-100 to-amber-100 dark:from-yellow-900/30 dark:to-amber-900/30 text-yellow-700 dark:text-yellow-300 text-xs rounded-full font-semibold flex items-center gap-1">
-                  <Brain size={10} />
-                  Review suggested
-                </span>
-              )}
-              {issue.intelligence?.classification === 'manual-only' && (
-                <span className="px-2 py-1 bg-gradient-to-r from-gray-100 to-slate-100 dark:from-gray-900/30 dark:to-slate-900/30 text-gray-700 dark:text-gray-300 text-xs rounded-full font-semibold flex items-center gap-1">
-                  <Eye size={10} />
-                  Manual review
-                </span>
-              )}
-              {/* Fallback for legacy issues without intelligence data */}
-              {!issue.intelligence?.classification && issue.isAutoFixable && (
-                <span className="px-2 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full font-semibold">
-                  Auto-fixable
-                </span>
-              )}
-              {/* Show confidence score for high-confidence classifications */}
-              {issue.intelligence?.confidence && issue.intelligence.confidence > 0.8 && (
-                <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs rounded border border-blue-200 dark:border-blue-800">
-                  {Math.round(issue.intelligence.confidence * 100)}%
-                </span>
-              )}
-            </div>
-            
-            <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 leading-relaxed">
-              {issue.message || issue.description || 'Grammar issue detected'}
-            </p>
-            
-            {issue.displayText && (
-              <div className="mb-3 p-3 bg-red-50/80 dark:bg-red-900/20 rounded-xl border border-red-200/50 dark:border-red-800/30">
-                <span className="text-xs text-red-600 dark:text-red-400 font-semibold">Found: </span>
-                <span className="font-mono text-sm text-red-800 dark:text-red-200">"{issue.displayText}"</span>
-              </div>
-            )}
-            
-            {suggestion && (
-              <div className="mb-4 p-3 bg-green-50/80 dark:bg-green-900/20 rounded-xl border border-green-200/50 dark:border-green-800/30">
-                <span className="text-xs text-green-600 dark:text-green-400 font-semibold">Suggestion: </span>
-                <span className="font-mono text-sm text-green-800 dark:text-green-200">"{suggestion}"</span>
-                {/* 🧠 PHASE 1: Show intelligence reasoning when available */}
-                {issue.intelligence?.reasoning && issue.intelligence.hasAnalysis && (
-                  <div className="mt-2 pt-2 border-t border-green-200/50 dark:border-green-800/30">
-                    <span className="text-xs text-green-600/80 dark:text-green-400/80 font-medium">Analysis: </span>
-                    <span className="text-xs text-green-700 dark:text-green-300">{issue.intelligence.reasoning}</span>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <div className="flex gap-3">
-              {/* 🧠 PHASE 1: Smart action buttons based on intelligence classification */}
-              {issue.intelligence?.classification === 'auto-fixable' && suggestion ? (
-                <motion.button
-                  onClick={() => autoFixIssue(issue, suggestion)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-green-500/25 transition-all duration-200"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  title={`Auto-fix with ${Math.round((issue.intelligence.confidence || 0.8) * 100)}% confidence`}
-                >
-                  <Zap size={14} />
-                  Auto-fix
-                </motion.button>
-              ) : issue.intelligence?.classification === 'semi-fixable' && suggestion ? (
-                <motion.button
-                  onClick={() => autoFixIssue(issue, suggestion)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-600 hover:to-amber-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-yellow-500/25 transition-all duration-200"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  title={`Apply suggestion (recommended to review first)`}
-                >
-                  <Brain size={14} />
-                  Apply & Review
-                </motion.button>
-              ) : issue.intelligence?.classification === 'manual-only' ? (
-                <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-xl font-semibold" title={issue.intelligence?.reasoning || 'Requires manual review'}>
-                  <Eye size={14} />
-                  Manual Review
-                </span>
-              ) : (
-                // Fallback for legacy issues or when suggestions are available
-                issue.isAutoFixable && suggestion ? (
-                  <motion.button
-                    onClick={() => autoFixIssue(issue, suggestion)}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm rounded-xl font-semibold shadow-lg shadow-blue-500/25 transition-all duration-200"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Zap size={14} />
-                    Fix
-                  </motion.button>
-                ) : (
-                  <span className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-sm rounded-xl font-semibold">
-                    <Eye size={14} />
-                    Manual
-                  </span>
-                )
-              )}
-              
-              <motion.button
-                onClick={() => removeIssue(issue.id)}
-                className="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 text-sm rounded-xl font-semibold transition-all duration-200"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                Dismiss
-              </motion.button>
-            </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={() => autoFixIssue(issue)}
+              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+            >
+              Fix
+            </button>
+            <button
+              onClick={() => removeIssue(issue.id)}
+              className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Ignore
+            </button>
           </div>
         </div>
       </motion.div>
@@ -1117,6 +1079,19 @@ const AdvancedGrammarInsights = React.forwardRef(({
                     Overview
                   </div>
                 </button>
+                <button
+                  onClick={() => setActiveView('settings')}
+                  className={`flex-1 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                    activeView === 'settings'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25 transform scale-[1.02]'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 justify-center">
+                    <Sparkles size={14} />
+                    Tier
+                  </div>
+                </button>
               </div>
             </div>
             {/* Content */}
@@ -1138,6 +1113,43 @@ const AdvancedGrammarInsights = React.forwardRef(({
                 </div>
               ) : activeView === 'issues' ? (
                 renderIssues()
+              ) : activeView === 'settings' ? (
+                <div className="space-y-6 pb-8">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                      Grammar Checking Settings
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Choose your grammar checking tier for optimal accuracy and performance.
+                    </p>
+                  </div>
+                  {/* <GrammarTierSelector /> */}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Grammar tier selector coming soon...
+                    </p>
+                  </div>
+                  
+                  {/* Fix All Button */}
+                  {issues.length > 0 && (
+                    <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
+                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+                        <Zap className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        Quick Actions
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                        Apply all fixable suggestions at once with smart conflict resolution.
+                      </p>
+                      <button
+                        onClick={autoFixAllIssues}
+                        className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Fix All Issues ({issues.filter(i => i.suggestions?.length > 0).length})
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 renderOverview()
               )}

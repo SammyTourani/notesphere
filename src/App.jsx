@@ -8,7 +8,7 @@ import LandingPage from './pages/LandingPage';
 import SignUp from './pages/SignUp';
 import Login from './pages/Login';
 import UserOnboarding from './pages/UserOnboarding';
-import NotesList from './components/NotesList';
+import NotesListOptimized from './components/NotesListOptimized';
 import TrashView from './components/TrashView';
 import SettingsPage from './pages/SettingsPage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -203,7 +203,7 @@ function App() {
                 currentUser && isNewUser ? (
                   <Navigate to="/onboarding" replace />
                 ) : (
-                  <NotesList />
+                  <NotesListOptimized />
                 )
               ) : (
                 <Navigate to="/login" replace />
