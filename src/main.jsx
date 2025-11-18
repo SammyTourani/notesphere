@@ -5,11 +5,11 @@ import App from './App.jsx';
 import './index.css'; // Your Tailwind CSS styles
 import './styles/performance.css'; // Performance optimizations
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import { FontProvider } from './context/FontContext';
-import { NotesProvider } from './context/NotesContext.jsx';
-import ErrorBoundary from './components/ErrorBoundary';
+import { AuthProvider } from './core/state/AuthContext';
+import { ThemeProvider } from './core/state/ThemeContext';
+import { FontProvider } from './core/state/FontContext';
+import { NotesProvider } from './core/state/NotesContext.jsx';
+import ErrorBoundary from './shared/components/layout/ErrorBoundary';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

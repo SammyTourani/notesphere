@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useAuth } from './context/AuthContext';
-import SlideInMenu from './components/SlideInMenu';
-import GuestBanner from './components/GuestBanner';
-import LandingPage from './pages/LandingPage';
-import SignUp from './pages/SignUp';
-import Login from './pages/Login';
-import UserOnboarding from './pages/UserOnboarding';
-import NotesListOptimized from './components/NotesListOptimized';
-import TrashView from './components/TrashView';
-import SettingsPage from './pages/SettingsPage';
-import ProtectedRoute from './components/ProtectedRoute';
-import SingleNoteEditor from './components/SingleNoteEditor';
-import SavePrompt from './components/SavePrompt';
-import MergeOptions from './components/MergeOptions';
-import FloatingThemeToggle from './components/FloatingThemeToggle';
-import UserProfile from './components/UserProfile';
+import { useAuth } from './core/state/AuthContext';
+import SlideInMenu from './shared/components/layout/SlideInMenu';
+import GuestBanner from './shared/components/feedback/GuestBanner';
+import LandingPage from './features/landing/components/LandingPage';
+import SignUp from './features/auth/pages/SignUpPage';
+import Login from './features/auth/pages/LoginPage';
+import UserOnboarding from './features/auth/pages/OnboardingPage';
+import NotesListOptimized from './features/notes/components/NotesList';
+import TrashView from './features/notes/components/TrashView';
+import SettingsPage from './features/settings/pages/SettingsPage';
+import ProtectedRoute from './features/auth/components/ProtectedRoute';
+import SingleNoteEditor from './features/notes/pages/NoteEditorPage';
+import SavePrompt from './shared/components/feedback/SavePrompt';
+import MergeOptions from './shared/components/feedback/MergeOptions';
+import FloatingThemeToggle from './features/settings/components/FloatingThemeToggle';
+import UserProfile from './features/settings/components/UserProfile';
 
 function App() {
   const { currentUser, isGuestMode, enableGuestMode, isNewUser } = useAuth();

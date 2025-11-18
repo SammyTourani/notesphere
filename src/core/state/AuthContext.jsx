@@ -1,0 +1,295 @@
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { auth, db } from '../config/firebase.config';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { profanity } from '@2toad/profanity';
+
+// Create the Context
+const AuthContext = createContext();
+
+// Custom hook to make it easier to use the auth context
+export function useAuth() {
+  return useContext(AuthContext);
+}
+
+// Provider Component
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isGuestMode, setIsGuestMode] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Function to handle user logout
+  const logout = async () => {
+    try {
+      // Don't automatically disable guest mode on logout
+      // This allows users to log out and stay in guest mode if they wish
+      await signOut(auth);
+      console.log("User logged out successfully");
+      setUserProfile(null);
+      return { success: true };
+    } catch (error) {
+      console.error("Logout error:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  // Enable guest mode
+  const enableGuestMode = () => {
+    console.log("Enabling guest mode");
+    setIsGuestMode(true);
+    localStorage.setItem('isGuestMode', 'true');
+  };
+
+  // Disable guest mode
+  const disableGuestMode = () => {
+    console.log("Disabling guest mode");
+    setIsGuestMode(false);
+    localStorage.removeItem('isGuestMode');
+  };
+
+  // Function to create welcome notes for new users
+  const createWelcomeNotes = async (userId) => {
+    const welcomeNotes = [
+      {
+        title: "Welcome to Your Digital Mind Palace",
+        content: `<p>Every great idea starts with a single thought. This is where yours will live, grow, and flourish.</p>
+                 <p>Your thoughts deserve a beautiful home. Make yourself comfortable here.</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "The Art of Capturing Moments",
+        content: `<p>Ideas are like butterflies - beautiful, fleeting, and impossible to catch without the right tools.</p>
+                 <p>Consider this your digital butterfly net. What will you capture today?</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "Your Creative Sanctuary",
+        content: `<p>This space belongs entirely to you. No judgment, no limits, no pressure.</p>
+                 <p>Write freely. Dream boldly. Create fearlessly.</p>
+                 <p><em>Your future self will thank you for the thoughts you preserve today.</em></p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      },
+      {
+        title: "Small Notes, Big Impact",
+        content: `<p>Sometimes the smallest notes hold the biggest breakthroughs.</p>
+                 <p>A quote that moves you. A solution that clicks. A memory worth keeping.</p>
+                 <p>What matters to you, matters here.</p>`,
+        pinned: true,
+        userId: userId,
+        created: serverTimestamp(),
+        lastUpdated: serverTimestamp(),
+        deleted: false,
+        deletedAt: null
+      }
+    ];
+
+    try {
+      // Import the notes context functions
+      const { addDoc, collection } = await import('firebase/firestore');
+      
+      // Create each welcome note in the correct collection path
+      for (const note of welcomeNotes) {
+        await addDoc(collection(db, 'notes'), note);
+      }
+      
+      console.log('Welcome notes created successfully');
+    } catch (error) {
+      console.error('Error creating welcome notes:', error);
+    }
+  };
+
+  // Function to create or update user profile
+  const updateUserProfile = async (profileData) => {
+    if (!currentUser) return { success: false, error: 'No authenticated user' };
+
+    try {
+      setLoadingProfile(true);
+      
+      // Filter profanity if updating name
+      if (profileData.displayName) {
+        // Check for profanity
+        if (profanity.exists(profileData.displayName)) {
+          return { 
+            success: false, 
+            error: 'Please choose a name without inappropriate language' 
+          };
+        }
+      }
+
+      // Reference to the user's profile document
+      const userDocRef = doc(db, 'userProfiles', currentUser.uid);
+      
+      // Get the current profile if it exists
+      const userDoc = await getDoc(userDocRef);
+      
+      let updatedProfile;
+      const isFirstTimeSetup = !userDoc.exists() || !userDoc.data()?.isProfileComplete;
+      
+      if (userDoc.exists()) {
+        // Update existing profile
+        updatedProfile = {
+          ...userDoc.data(),
+          ...profileData,
+          updatedAt: serverTimestamp()
+        };
+      } else {
+        // Create new profile
+        updatedProfile = {
+          userId: currentUser.uid,
+          email: currentUser.email,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          ...profileData,
+          isProfileComplete: true
+        };
+      }
+      
+      // Write to Firestore
+      await setDoc(userDocRef, updatedProfile, { merge: true });
+      
+      // Create welcome notes for first-time users
+      if (isFirstTimeSetup && profileData.displayName) {
+        await createWelcomeNotes(currentUser.uid);
+      }
+      
+      // Update local state
+      setUserProfile(updatedProfile);
+      
+      // If this was a new user completing their profile, they're no longer new
+      if (isNewUser) {
+        setIsNewUser(false);
+      }
+      
+      return { success: true, profile: updatedProfile };
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return { success: false, error: error.message };
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+  
+  // Function to check if user is new and needs to set up their profile
+  const checkUserProfile = async (user) => {
+    if (!user) return;
+    
+    try {
+      setLoadingProfile(true);
+      console.log("Checking user profile for:", user.uid);
+      
+      const userDocRef = doc(db, 'userProfiles', user.uid);
+      
+      try {
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          // User profile exists
+          const profile = userDoc.data();
+          console.log("Found user profile:", profile);
+          setUserProfile(profile);
+          
+          // Check if profile is complete (has a name)
+          if (!profile.isProfileComplete || !profile.displayName) {
+            console.log("Profile exists but incomplete, setting isNewUser to true");
+            setIsNewUser(true);
+          } else {
+            console.log("Profile complete, setting isNewUser to false");
+            setIsNewUser(false);
+          }
+        } else {
+          // New user, no profile yet
+          console.log("No user profile found, setting isNewUser to true");
+          setUserProfile(null);
+          setIsNewUser(true);
+        }
+      } catch (docError) {
+        // If we can't access the profile due to permissions,
+        // we'll assume this is a new user
+        console.error("Error getting user document:", docError);
+        console.log("Setting isNewUser to true due to document access error");
+        setUserProfile(null);
+        setIsNewUser(true);
+      }
+    } catch (error) {
+      console.error("Error checking user profile:", error);
+      // Assume this is a new user if we can't verify
+      setIsNewUser(true);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  // Set up the Firebase Auth State Listener
+  useEffect(() => {
+    // Check if user was in guest mode previously
+    const storedGuestMode = localStorage.getItem('isGuestMode');
+    if (storedGuestMode === 'true') {
+      console.log("Restoring guest mode from localStorage");
+      setIsGuestMode(true);
+    }
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log("Auth State Changed:", user ? `User UID: ${user.uid}` : "No User");
+      setCurrentUser(user);
+      
+      if (user) {
+        // Check if user has a profile
+        checkUserProfile(user);
+      } else {
+        // Clear profile if logged out
+        setUserProfile(null);
+        setIsNewUser(false);
+      }
+      
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Define the value provided by the context
+  const value = {
+    currentUser,
+    loading,
+    logout,
+    isGuestMode,
+    enableGuestMode,
+    disableGuestMode,
+    userProfile,
+    isNewUser,
+    updateUserProfile,
+    loadingProfile
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+      {loading && (
+        <div className="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-lg shadow-xl">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+            <p className="mt-4 text-gray-700 dark:text-gray-300 text-center">Loading...</p>
+          </div>
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
+}
