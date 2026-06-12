@@ -6,7 +6,7 @@
  */
 
 // Core exports
-export { getGrammarController } from './core/GrammarController.js';
+export { getUnifiedGrammarController } from './core/GrammarController.js';
 
 // Component exports
 export { default as GrammarInsights } from './components/GrammarInsights.jsx';
