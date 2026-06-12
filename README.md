@@ -1,5 +1,7 @@
 # NoteSphere
 
+[![CI](https://github.com/SammyTourani/notesphere/actions/workflows/ci.yml/badge.svg)](https://github.com/SammyTourani/notesphere/actions/workflows/ci.yml)
+
 A note-taking web app with a fully offline, in-browser grammar checker. Notes sync to Firebase, the editor is built on TipTap, and grammar checking runs entirely in the browser via a WASM engine with zero network calls.
 
 ## What makes it interesting: offline grammar checking
