@@ -1,129 +1,109 @@
-# 📝 NoteSphere
+# NoteSphere
 
-A modern, intelligent note-taking application with advanced grammar checking capabilities.
+A note-taking web app with a fully offline, in-browser grammar checker. Notes sync to Firebase, the editor is built on TipTap, and grammar checking runs entirely in the browser via a WASM engine with zero network calls.
 
-## ✨ Features
+## What makes it interesting: offline grammar checking
 
-### 📝 **Rich Text Editor**
-- TipTap-powered editor with markdown support
-- Real-time collaborative editing
-- Rich formatting options (bold, italic, underline, highlights)
-- Image and link support
+The grammar checker runs the [`nlprule`](https://github.com/bminixhofer/nlprule) rule engine compiled to WebAssembly. It loads in the browser, checks text locally, and never sends your writing to a server. The WASM binary and its rule/dictionary data ship as static assets under `public/` and `src/wasm/`.
 
-### 🔍 **Advanced Grammar Checking**
-- **Professional-grade grammar engine** powered by LanguageTool
-- **Command-based text replacement** with full undo/redo support (Cmd+Z/Cmd+Y)
-- **Smart suggestion system** with context-aware recommendations
-- **Real-time checking** as you type
-- **Formatting preservation** during grammar corrections
+The grammar controller is built around three intended "tiers", but only the first is wired up today:
 
-### 🔐 **Authentication & Sync**
-- Firebase Authentication (Email/Password, Microsoft, Guest mode)
-- Real-time cloud synchronization
-- Offline support with local storage
-- User profiles and onboarding
+- **Tier 1 — nlprule WASM (functional).** The only working grammar path. Runs in-browser, no network. Implemented in `src/features/grammar/engines/WasmEngine.js`.
+- **Tier 2 — LanguageTool (not implemented).** A placeholder. The controller holds a stub whose `isAvailable()` always returns `false`; there is no LanguageTool integration in this codebase.
+- **Tier 3 — GPT-4 (not implemented).** Reserved as a future "premium" path. No implementation exists.
 
-### 📱 **Modern UI/UX**
-- Dark/Light theme support
-- Responsive design for all devices
-- Smooth animations with Framer Motion
-- Intuitive navigation and user experience
+See `src/features/grammar/core/GrammarController.js` for the tier orchestration.
 
-### 📊 **Additional Features**
-- Word count display
-- Note pinning and organization
-- Trash/restore functionality
-- Guest mode for quick notes
-- Performance-optimized with smart caching
+## Features
 
-## 🚀 Getting Started
+These are present and working in the live app:
+
+- **Authentication** — Firebase email/password, Microsoft OAuth, and guest mode.
+- **Cloud sync** — Notes stored in Firestore with offline IndexedDB persistence, plus LocalStorage fallback.
+- **Rich-text editor** — TipTap (ProseMirror) with bold, italic, underline, highlight, links, and images.
+- **Offline grammar checking** — nlprule WASM, runs locally (see above).
+- **Note management** — pin, trash, and restore.
+- **Autosave** — notes save as you type.
+- **Word count** — live count in the editor.
+- **Theming** — dark and light modes.
+- **Animations** — Framer Motion throughout the UI.
+
+## Tech stack
+
+- **Frontend:** React 19 + Vite
+- **Editor:** TipTap (ProseMirror)
+- **Styling:** Tailwind CSS
+- **Animations:** Framer Motion
+- **Backend:** Firebase (Authentication + Firestore)
+- **Grammar:** nlprule, compiled to WebAssembly (runs in-browser)
+- **Language:** JavaScript (ES modules)
+
+## Getting started
 
 ### Prerequisites
-- Node.js (v16 or higher)
-- npm or yarn
 
-### Installation
+- Node.js 18 or newer
+- npm
 
-1. **Clone the repository**
+### Setup
+
+1. Clone and install:
+
    ```bash
-   git clone [your-repo-url]
+   git clone https://github.com/SammyTourani/notesphere.git
    cd notesphere
-   ```
-
-2. **Install dependencies**
-   ```bash
    npm install
    ```
 
-3. **Set up environment variables**
-   Create a `.env` file with your Firebase configuration:
-   ```
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
+2. Configure Firebase:
+
+   ```bash
+   cp .env.example .env
    ```
 
-4. **Start the development server**
+   Fill in your Firebase web config values in `.env`. The variable names the build reads are listed in `.env.example`.
+
+   > Note: the app currently initializes Firebase from hardcoded values in `src/core/config/firebase.config.js` rather than from these environment variables. If you want the `.env` values to take effect, that file needs to be wired to `import.meta.env`. This is left as-is intentionally; see "Project status" below.
+
+3. Run the dev server:
+
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
-   Navigate to `http://localhost:5173`
+   The app runs on `http://localhost:3000` (configured in `vite.config.js`).
 
-## 🔧 Grammar System Architecture
+### Build
 
-NoteSphere features a sophisticated grammar checking system built with modern best practices:
+```bash
+npm run build
+```
 
-### **Command-Based Replacer**
-- Uses TipTap's native command system for all text modifications
-- Ensures proper undo/redo integration
-- Preserves rich text formatting during replacements
-- Professional editor behavior matching tools like Grammarly
+The production build emits to `dist/`. The grammar WASM binary is large (~20 MB uncompressed, ~9 MB gzipped), so the build prints a chunk-size warning. That is expected.
 
-### **Grammar Engine**
-- Multi-layer caching system for performance
-- Context-aware suggestions
-- Advanced error categorization
-- Real-time position tracking
+## Project structure
 
-### **Key Components**
-- `CommandBasedReplacer.js` - Professional text replacement engine
-- `GrammarEngine.js` - Advanced grammar checking with LanguageTool
-- `UltimateGrammarUI.jsx` - Modern grammar interface
-- `GrammarExtension.js` - TipTap extension for grammar integration
+```
+src/
+  core/        # config, state, services (auth, notes, storage)
+  features/    # auth, editor, grammar, landing, notes, settings
+  wasm/        # nlprule WASM bindings
+  shared/      # shared UI, hooks, utils
+public/        # WASM binary + dictionary/rules/frequency assets
+mega-engine/   # standalone multi-engine grammar package (see below)
+```
 
-## 🛠️ Tech Stack
+Additional architecture and contributor notes live in `ARCHITECTURE.md` and `DEVELOPER_GUIDE.md`.
 
-- **Frontend**: React 18, Vite
-- **Editor**: TipTap (ProseMirror-based)
-- **Styling**: Tailwind CSS
-- **Animations**: Framer Motion
-- **Backend**: Firebase (Firestore, Authentication)
-- **Grammar**: LanguageTool API
-- **Build Tool**: Vite
-- **Language**: JavaScript (ES6+)
+## Project status and honest notes
 
-## 📖 Usage
+This started as an experiment and carries some unfinished and experimental code:
 
-1. **Create an account** or use guest mode
-2. **Start writing** with the rich text editor
-3. **Check grammar** using the grammar button (bottom-right)
-4. **Apply suggestions** with confidence - full undo/redo support
-5. **Organize notes** with pinning and folders
-6. **Sync across devices** with automatic cloud storage
+- **`mega-engine/` is a separate, more ambitious grammar package.** It combines nlprule, Hunspell, SymSpell, write-good, and retext into a multi-engine pipeline. It is built (with its own TypeScript source, tests, and assets) but **not yet wired into the live app** — the running app uses the lighter `src/features/grammar/engines/WasmEngine.js` path instead.
+- **Some files under `src/services/` are experimental and unwired** (alternative grammar engines and rule sets). They are not part of the live grammar path.
+- **Firebase config is hardcoded** in `src/core/config/firebase.config.js`. The committed `.env` is not currently read by the app. (The Firebase web API key is public-by-design for client apps; access is meant to be controlled by Firestore/Storage security rules.)
+- **No automated test harness is wired at the app level.** The `mega-engine/` package has its own tests.
 
-## 🤝 Contributing
+## License
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
----
-
-**Built with ❤️ for modern note-taking**
+MIT. See [LICENSE](./LICENSE).
